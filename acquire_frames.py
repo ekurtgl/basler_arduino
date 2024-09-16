@@ -65,10 +65,11 @@ def main():
 
     # experiment = '%s_%s' % (time.strftime('%Y-%m-%d_%H%M%S', time.localtime()), args.name)
     experiment = datetime.now().strftime("%Y%m%d_%H_%M_%S_")  + args.name# microsec precision
+    args_dict = vars(args)
 
     if str_to_bool(args.save):
         # update config to reflect runtime params
-        args_dict = vars(args)
+        
         config.update({'args': args_dict})
         directory = os.path.join(config['savedir'], experiment)
         if not os.path.isdir(directory):
@@ -88,7 +89,7 @@ def main():
     camname = list(config['cams'].keys())[0]
     cam = config['cams'][camname]
     pprint.pprint(f'camname: {camname} \n cam: {cam}')
-    cam1 = Basler(args, cam, cam_id=0)
+    cam1 = Basler(args_dict, cam, experiment, config, cam_id=0)
     
     if args.acquisition_mode == 'frames' and not trigger_with_arduino:
         frames = cam1.get_n_frames(args.n_total_frames)
