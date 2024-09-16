@@ -78,71 +78,33 @@ class Basler():
             self.initialize_preview()
 
     def initialize_preview(self):
-        plt.ion()
-        empty_image = np.zeros((self.cam['options']['Height'], self.cam['options']['Width'], 1), dtype=np.uint8)
-        ax1 = plt.subplot(1,1,1)
-        self.fig = ax1.imshow(empty_image)
-        # cv2.namedWindow(self.camera.GetDeviceInfo().GetModelName(), cv2.WINDOW_NORMAL)
+        # plt.ion()
+        empty_image = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
+        # ax1 = plt.subplot(1,1,1)
+        # self.fig = ax1.imshow(empty_image)
+        cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
         # self.font = cv2.FONT_HERSHEY_SIMPLEX
-        # cv2.imshow(self.camera.GetDeviceInfo().GetModelName(), empty_image)
-        # cv2.waitKey(0)
+        cv2.imshow(self.name, empty_image)        
     
     # @threaded
     def update_preview(self):
-        frame = np.expand_dims(self.frames[-1], -1)
-        self.fig.set_data(frame)
-        plt.pause(0.1)
+        # frame = np.expand_dims(self.frames[-1], -1)
+        # self.fig.set_data(frame)
+        # plt.pause(0.1)
         # string = '%s:%07d' %(self.camera.GetDeviceInfo().GetModelName(), count)
         # cv2.putText(frame, string,(10,out_height-20), self.font, 0.5,(0,0,255),2,cv2.LINE_AA)
-        # cv2.imshow(self.camera.GetDeviceInfo().GetModelName(), frame)
-
-    # def initialize_preview(self):
-    #     # cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
-    #     print("New window: %s" % self.name)
-    #     cv2.namedWindow(self.name, cv2.WINDOW_NORMAL) #AUTOSIZE)
-    #     self.font = cv2.FONT_HERSHEY_SIMPLEX
-    #     self.latest_frame = None
-    #     self.preview_queue = LifoQueue(maxsize=5) #, block=False)
-    #     #self.preview_thread = mp.Process(target=self.preview_worker, args=(self.preview_queue,))
-    #     self.preview_thread = Thread(target=self.preview_worker, args=(self.preview_queue,))
-    #     self.preview_thread.daemon = True
-    #     self.preview_thread.start()
-    
-#     def preview_worker(self, queue):
-#         should_continue = True
-#         while should_continue:
-#             item = queue.get()
-#             # print(item)
-#             if item is None:
-#                 if self.verbose:
-#                     print('Preview stop signal received')
-#                 should_continue=False
-#                 break
-#                 # break
-#             # left, right, count = item
-#             frame, count = item
-#             # frame should be processed, so a single RGB image
-#             # out = np.vstack((left,right))
-#             print(f'frame: {frame.shape}')
-#             # h, w, c = frame.shape
-#             h, w = frame.shape
-# #            if self.save:
-# #                frame = cv2.resize(frame, (w//2,h//2),cv2.INTER_NEAREST)
-# #                out_height = h//2
-# #            else:
-# #                frame = cv2.resize(frame, (w,h),cv2.INTER_NEAREST)
-# #                out_height = h//3*2
-# #            # frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-#             out_height=h                    
-#             # string = '%.4f' %(time_acq*1000)
-#             string = '%s:%07d' %(self.name, count)
-#             cv2.putText(frame,string,(10,out_height-20), self.font, 0.5,(0,0,255),2,cv2.LINE_AA)
-#             self.latest_frame = frame
-#             queue.task_done()
-
+        cv2.imshow(self.name, self.frames[-1])
+        k = cv2.waitKey(1)
+        return k
+        
     # @threaded
     def get_n_frames(self, n_frames, timeout=5000):
         is_save = str_to_bool(self.args.save)
+        converter = pylon.ImageFormatConverter()
+        # converting to opencv bgr format
+        converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+        converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+
         if is_save:
             directory = os.path.join(self.config['savedir'], self.experiment, 'metadata')
             if not os.path.isdir(directory):
@@ -151,6 +113,8 @@ class Basler():
         # The camera device is parameterized with a default configuration which
         # sets up free-running continuous acquisition.
         self.camera.StartGrabbingMax(n_frames)
+        # Grabing Continusely (video) with minimal delay
+        # self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
         start_time = time.time()
         # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
         # when n_frames images have been retrieved.
@@ -162,16 +126,19 @@ class Basler():
             metadata = {}
             # Image grabbed successfully?
             if grabResult.GrabSucceeded():
+                image = converter.Convert(grabResult).GetArray()
                 # Access the image data.
                 metadata['time_stamp'] = datetime.now().strftime("%Y%m%d_%H_%M_%S.%f")  # microsec precision
-                self.frames.append(grabResult.Array)
+                self.frames.append(image)
                 if self.preview and grabResult.ImageNumber % 10 == 0:
-                    self.update_preview()
+                    k = self.update_preview()
+                    if k == 27:
+                        break
                     # self.preview_queue.put_nowait((grabResult.Array, grabResult.ImageNumber))
                     # #self.preview_worker((frame, framecount))
                     # if grabResult.Array is not None:
                     #     cv2.imshow(self.name, grabResult.Array)
-                print(f'Frame: {n}, time stamp: {metadata["time_stamp"]}')
+                # print(f'Frame: {n}, time stamp: {metadata["time_stamp"]}')
                 # print("Gray value of first pixel: ", frames[-1][0, 0])
                 # print(f'frame: {grabResult.Array.dtype}, shape: {grabResult.Array.shape}')
                 metadata['width'] = grabResult.Width
@@ -203,8 +170,10 @@ class Basler():
     
     def export_video(self):
         directory = os.path.join(self.config['savedir'], self.experiment)
-        writer_obj = cv2.VideoWriter(os.path.join(directory, "video.mp4"), self.vid_cod, self.args.videowrite_fps,
-                                     (self.cam['options']['Width'], self.cam['options']['Height']))
+        # writer_obj = cv2.VideoWriter(os.path.join(directory, "video.mp4"), self.vid_cod, self.args.videowrite_fps,
+        #                              (self.cam['options']['Width'], self.cam['options']['Height']))
+        writer_obj = cv2.VideoWriter(os.path.join(directory, "video.mp4"), self.vid_cod, 120.0,
+                                     (504, 384))
 
         for frame in tqdm(self.frames, desc='Exporting Video'):
             writer_obj.write(frame)
