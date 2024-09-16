@@ -60,8 +60,8 @@ def main():
     print(f"Is Arduino: {trigger_with_arduino}")
     # if trigger_with_arduino or len(config['cams'])>1:
     if trigger_with_arduino:
-        arduino = Arduino()
-        arduino.initialize(port=args.port, baudrate=115200)
+        arduino = Arduino(port=args.port, baudrate=115200)
+        arduino.initialize()
 
     # experiment = '%s_%s' % (time.strftime('%Y-%m-%d_%H%M%S', time.localtime()), args.name)
     experiment = datetime.now().strftime("%Y%m%d_%H_%M_%S_")  + args.name# microsec precision
@@ -88,17 +88,30 @@ def main():
     camname = list(config['cams'].keys())[0]
     cam = config['cams'][camname]
     pprint.pprint(f'camname: {camname} \n cam: {cam}')
-    cam1 = Basler(args, cam, experiment, config, cam_id=0)
+    start_time = time.time()
+    cam1 = Basler(args, cam, experiment, config, start_time, cam_id=0)
+
+    if args.acquisition_mode == 'frames':
+
+        if trigger_with_arduino:
+            print('here')
+            cmd = "S{}\r\n".format(int(cam1.cam['options']['AcquisitionFrameRate']))
+            arduino.arduino.write(cmd.encode())
+            #arduino.write(str.encode('S{}'.format(device.acquisition_fps)))
+            #print(b'S%d\r\n' % int(device.acquisition_fps))
+            print("***Arduino sent: {}***".format(cmd))
+            time.sleep(0.5)
+            recv = arduino.arduino.readline()
+            print(recv)
+            print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
+            # device.start()
+            time.sleep(0.5)
+        else:
+            frames = cam1.get_n_frames(args.n_total_frames)
     
-    if args.acquisition_mode == 'frames' and not trigger_with_arduino:
-        frames = cam1.get_n_frames(args.n_total_frames)
-        # print(f'frames: {len(frames)}')
-        # frames.result()
-        
-    elif args.acquition_mode == 'duration':
-        start_time = time.time()
+    elif args.acquisition_mode == 'duration':
         while time.time() < start_time:
-            frames = cam1.get_n_frames(1)
+            frames = cam1.get_n_frames(1, save_vid=False)
         pass
 
 if __name__=='__main__':
