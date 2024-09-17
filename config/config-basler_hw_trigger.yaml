@@ -22,7 +22,7 @@ cams:
       # note: modify these at your own risk! don't change the order!
       # many have dependencies that are hard to figure out, so order matters.
       # for ex., exposureauto must be off before exposuretime can be changed. 
-      AcquisitionMode: 'Continuous' # can capture one frame or multiple frames as well
+      # AcquisitionMode: 'Continuous' # can capture one frame or multiple frames as well
       ExposureAuto: 'Off' # manually set exposure
       ExposureMode: 'Timed'
       ExposureTime: 4000.0 #68290.0 #1000.0 # in microseconds, so 1000 = 1ms
@@ -30,10 +30,10 @@ cams:
       # binningvertical
       BinningVerticalMode: 'Average'
       BinningHorizontalMode: 'Average'
-      BinningVertical: 4
-      BinningHorizontal: 4
-      Width: 504 #680 #1024 # max 1280 if binning=1, else 640
-      Height: 384 #512 #768 # max 1024 if binning=1, else 512
+      BinningVertical: 1
+      BinningHorizontal: 1
+      Width: 1248 #680 #1024 # max 1280 if binning=1, else 640
+      Height: 1248 #512 #768 # max 1024 if binning=1, else 512
       # OffsetX: 0 # left value of roi
       # OffsetY: 0 # top value of roi
       CenterX: True

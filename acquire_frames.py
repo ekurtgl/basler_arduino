@@ -87,33 +87,47 @@ def main():
     # tuple_list = (config, camname, cam, args, experiment, start_t, trigger_with_arduino)
     camname = list(config['cams'].keys())[0]
     cam = config['cams'][camname]
-    pprint.pprint(f'camname: {camname} \n cam: {cam}')
-    start_time = time.time()
+    # pprint.pprint(f'camname: {camname} \n cam: {cam}')
+    start_time = time.perf_counter()
     cam1 = Basler(args, cam, experiment, config, start_time, cam_id=0)
+    # pprint.pprint(dir(cam1.camera))
 
     if args.acquisition_mode == 'frames':
-
         if trigger_with_arduino:
             print('here')
             cmd = "S{}\r\n".format(int(cam1.cam['options']['AcquisitionFrameRate']))
             arduino.arduino.write(cmd.encode())
-            #arduino.write(str.encode('S{}'.format(device.acquisition_fps)))
-            #print(b'S%d\r\n' % int(device.acquisition_fps))
-            print("***Arduino sent: {}***".format(cmd))
+            print("***Sent msg to Arduino: {}***".format(cmd))
             time.sleep(0.5)
             recv = arduino.arduino.readline()
             print(recv)
             print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
-            # device.start()
             time.sleep(0.5)
-        else:
-            frames = cam1.get_n_frames(args.n_total_frames)
+            cam1.start()
+            time.sleep(0.5)
+
+        else:            
+            future = cam1.get_n_frames(args.n_total_frames)
+            future.result()
     
     elif args.acquisition_mode == 'duration':
-        while time.time() < start_time:
-            frames = cam1.get_n_frames(1, save_vid=False)
-        pass
+        if trigger_with_arduino:
+            pass
+        else:
+            acquisition_time = time.perf_counter()
+            while time.perf_counter() - acquisition_time < args.experiment_duration:
+                cam1.get_n_frames(1, save_vid=False)
 
+    # get all active child processes
+    active = mp.active_children()
+    print(f'Active Children: {len(active)}')
+    # terminate all active children
+    for child in active:
+        child.terminate()
+    # block until all children have closed
+    for child in active:
+        child.join()
+        child.close()
 if __name__=='__main__':
     # set_start_method("spawn")
     main()
