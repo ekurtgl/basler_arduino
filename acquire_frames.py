@@ -94,10 +94,9 @@ def main():
 
     if args.acquisition_mode == 'frames':
         if trigger_with_arduino:
-            print('here')
             cmd = "S{}\r\n".format(int(cam1.cam['options']['AcquisitionFrameRate']))
             arduino.arduino.write(cmd.encode())
-            print("***Sent msg to Arduino: {}***".format(cmd))
+            print("***Sent msg to Arduino: {} ***".format(cmd))
             time.sleep(0.5)
             recv = arduino.arduino.readline()
             print(recv)

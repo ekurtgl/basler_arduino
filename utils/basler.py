@@ -43,7 +43,7 @@ class Basler():
         # get the camera list 
         self.devices = self.tlFactory.EnumerateDevices()
         self.vid_cod = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-        
+        self.nframes = 0
         print('Connecting to the camera...')   
 
         n = 0
@@ -408,7 +408,7 @@ class Basler():
             raise ValueError('Start must be called before loop!')
         
         try:
-            if self.cam.GetGrabResultWaitObject().Wait(0):
+            if self.camera.GetGrabResultWaitObject().Wait(0):
                 print("grab results waiting")
             #should_continue = self.cam.IsGrabbing() #True
             timeout_time=2000 #60000
@@ -416,25 +416,25 @@ class Basler():
             print('Checking for results')
             last_report = 0
 
-            while not self.cam.GetGrabResultWaitObject().Wait(0):
+            while not self.camera.GetGrabResultWaitObject().Wait(0):
                 #print(arduino.readline())
 
                 elapsed_pre = time.perf_counter() - self.start_timer #exp_start_tim     
                 if round(elapsed_pre) % 5 == 0 and round(elapsed_pre)!=last_report:
-                    print("...waiting", round(elapsed_pre))
+                    print("...waiting grabbing", round(elapsed_pre))
                     
                 last_report = round(elapsed_pre)
 
-            while self.cam.IsGrabbing(): #should_continue:
+            while self.camera.IsGrabbing(): #should_continue:
 
                 if self.nframes==0:
                     elapsed_time=0
                     self.frame_timer = time.perf_counter()
 
-                if self.nframes % round(report_period*self.acquisition_fps) ==0:
-                    print("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.acquisition_fps, self.nframes, elapsed_time))
+                if self.nframes % round(report_period*self.cam['options']['AcquisitionFrameRate']) == 0:
+                    print("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
 
-                image_result = self.cam.RetrieveResult(timeout_time, pylon.TimeoutHandling_Return) #, pylon.TimeoutHandling_ThrowException)
+                image_result = self.camera.RetrieveResult(timeout_time, pylon.TimeoutHandling_Return) #, pylon.TimeoutHandling_ThrowException)
                 #if (image_result.GetNumberOfSkippedImages()):
                 #    print("Skipped ", image_result.GetNumberOfSkippedImages(), " image.")
                 if image_result is None and elapsed_time%5==0: #not image_result.GrabSucceeded():
@@ -442,6 +442,7 @@ class Basler():
                     continue
                     #pass
                 if image_result.GrabSucceeded():
+                    print('here')
                     self.nframes += 1
                     #print("got image %i" % self.nframes)
                     frame = self.convert_image(image_result)
@@ -458,7 +459,7 @@ class Basler():
                     # metadata = (framecount, timestamp, sestime, cputime)
                     if self.save:
                         self.writer_obj.write(image_result.Array) #frame) # send frame to save_queue
-                        self.writer_obj.write_metadata(self.serial, framecount, frameid, timestamp, sestime, cputime)
+                        # self.writer_obj.write_metadata(self.serial, framecount, frameid, timestamp, sestime, cputime)
                         # self.save_queue.put_nowait((frame, metadata))
 
                     image_result.Release()
@@ -474,13 +475,14 @@ class Basler():
                     # Break out of the while loop if ESC registered
                     elapsed_time = time.perf_counter() - self.frame_timer #exp_start_time
                     key = cv2.waitKey(1)
-                    sync_state = self.cam.LineStatus.GetValue() #cameras[cameraContextValue].LineStatus.GetValue()
+                    sync_state = self.camera.LineStatus.GetValue() #cameras[cameraContextValue].LineStatus.GetValue()
                     #print(sync_state)
                     #if key == 27 or sync_state is False or (elapsed_time>duration_sec): # ESC
 
                     movtime = time.perf_counter() - self.frame_timer
 
-                    if key == 27 or (elapsed_time>self.duration_sec): # ESC
+                    # if key == 27 or (elapsed_time>self.duration_sec): # ESC
+                    if key == 27 or (self.nframes > 100): # ESC
                         #print("Sync:", sync_state)
                         #writerA.close()
                         #writerB.close()
