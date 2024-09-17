@@ -105,7 +105,7 @@ def main():
             time.sleep(0.5)
             cam1.start()
             time.sleep(0.5)
-
+            cam1.loop(arduino=arduino.arduino)
         else:            
             future = cam1.get_n_frames(args.n_total_frames)
             future.result()

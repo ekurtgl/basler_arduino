@@ -24,7 +24,6 @@ def threaded(fn):
         return tp.submit(fn, *args, **kwargs)  # returns Future object
     return wrapper
 
-
 class Basler():
 
     def __init__(self, args, cam, experiment, config, start_t, cam_id=0, max_cams=2, connect_retries=20) -> None:
@@ -91,10 +90,15 @@ class Basler():
 
         if self.preview:
             # self.initialize_preview()
-            self.vid_show = VideoShow()
+            self.vid_show = VideoShow(self.name)
+            self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
+            self.vid_show.start()
         
         if self.save:
             self.init_video_writer()
+
+    def close(self):
+        self.camera.Close()
 
     def init_video_writer(self):
         self.writer_obj = cv2.VideoWriter(os.path.join(self.config['savedir'], self.experiment, "video.mp4"), self.vid_cod, self.args.videowrite_fps,
@@ -236,12 +240,15 @@ class Basler():
         self.preview_queue = LifoQueue(maxsize=10)
         self.preview_thread()   
     
+    
     def preview_worker(self):
         while self.preview:
             print('here ')
             cv2.imshow(self.name, self.latest_frame)
-            cv2.putText(self.latest_frame, "{}. Fra,e".format(self.n),
+            cv2.putText(self.latest_frame, "{}. Frame".format(self.n),
                 (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255))
+            k = cv2.waitKey(1)
+            yield k
             
     def update_preview(self):
         # frame = np.expand_dims(self.frames[-1], -1)
@@ -290,9 +297,10 @@ class Basler():
                 # Access the image data.
                 metadata[grabResult.ID]['time_stamp'] = datetime.now().strftime("%Y%m%d_%H_%M_%S.%f")  # microsec precision
                 # self.frames.append(image)
-                # if self.preview and grabResult.ImageNumber % 10 == 0:
+                if self.preview:  # and grabResult.ImageNumber % 10 == 0:
                 #     self.preview_queue.put_nowait(self.latest_frame)
-                    # self.vid_show.frame = self.latest_frame
+                    self.vid_show.frame = self.latest_frame
+                    self.vid_show.n_frame = self.n + 1
                     # k = self.update_preview()
                     # if k == 27:  # ASCII value for “ESC”
                     #     break
@@ -327,6 +335,7 @@ class Basler():
         print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
 
         if self.preview:
+            self.vid_show.stop()
             cv2.destroyAllWindows()
 
         if save_vid:                 
@@ -388,7 +397,113 @@ class Basler():
         if self.preview:
             self.initialize_preview()
         self.started= True
+        self.processing_queue = LifoQueue(maxsize=256)
         self.start_timer = time.perf_counter()
+
+    def loop(self, arduino=None, timeout_time=5000, report_period=10):
+        
+        print("Looping - %s" % self.name)
+
+        if not self.started:
+            raise ValueError('Start must be called before loop!')
+        
+        try:
+            if self.cam.GetGrabResultWaitObject().Wait(0):
+                print("grab results waiting")
+            #should_continue = self.cam.IsGrabbing() #True
+            timeout_time=2000 #60000
+
+            print('Checking for results')
+            last_report = 0
+
+            while not self.cam.GetGrabResultWaitObject().Wait(0):
+                #print(arduino.readline())
+
+                elapsed_pre = time.perf_counter() - self.start_timer #exp_start_tim     
+                if round(elapsed_pre) % 5 == 0 and round(elapsed_pre)!=last_report:
+                    print("...waiting", round(elapsed_pre))
+                    
+                last_report = round(elapsed_pre)
+
+            while self.cam.IsGrabbing(): #should_continue:
+
+                if self.nframes==0:
+                    elapsed_time=0
+                    self.frame_timer = time.perf_counter()
+
+                if self.nframes % round(report_period*self.acquisition_fps) ==0:
+                    print("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.acquisition_fps, self.nframes, elapsed_time))
+
+                image_result = self.cam.RetrieveResult(timeout_time, pylon.TimeoutHandling_Return) #, pylon.TimeoutHandling_ThrowException)
+                #if (image_result.GetNumberOfSkippedImages()):
+                #    print("Skipped ", image_result.GetNumberOfSkippedImages(), " image.")
+                if image_result is None and elapsed_time%5==0: #not image_result.GrabSucceeded():
+                    print("... waiting")
+                    continue
+                    #pass
+                if image_result.GrabSucceeded():
+                    self.nframes += 1
+                    #print("got image %i" % self.nframes)
+                    frame = self.convert_image(image_result)
+                    #frame = image_converted.GetNDArray()                
+                    #frame = self.process(frame)
+                    sestime = time.perf_counter() - self.start_t
+                    cputime = time.time()
+                    frameid =  image_result.ID #GetFrameID()
+                    framecount = self.nframes
+                    # timestamp is nanoseconds from last time camera was powered off
+                    timestamp = image_result.GetTimeStamp()*1e-9 + self.timestamp_offset 
+                    # print('standard process time: %.6f' %(time.perf_counter() - start_t))
+                    # def write_metadata(self, framecount, timestamp, arrival_time, sestime, cputime):
+                    # metadata = (framecount, timestamp, sestime, cputime)
+                    if self.save:
+                        self.writer_obj.write(image_result.Array) #frame) # send frame to save_queue
+                        self.writer_obj.write_metadata(self.serial, framecount, frameid, timestamp, sestime, cputime)
+                        # self.save_queue.put_nowait((frame, metadata))
+
+                    image_result.Release()
+
+                    # only output every 10th frame for speed
+                    # might be unnecessary
+                    if self.preview:# and framecount % 5 ==0:
+                        self.preview_queue.put_nowait((frame,framecount))
+                        #self.preview_worker((frame, framecount))
+                        if self.latest_frame is not None:
+                            cv2.imshow(self.name, self.latest_frame)
+                    frames = None
+                    # Break out of the while loop if ESC registered
+                    elapsed_time = time.perf_counter() - self.frame_timer #exp_start_time
+                    key = cv2.waitKey(1)
+                    sync_state = self.cam.LineStatus.GetValue() #cameras[cameraContextValue].LineStatus.GetValue()
+                    #print(sync_state)
+                    #if key == 27 or sync_state is False or (elapsed_time>duration_sec): # ESC
+
+                    movtime = time.perf_counter() - self.frame_timer
+
+                    if key == 27 or (elapsed_time>self.duration_sec): # ESC
+                        #print("Sync:", sync_state)
+                        #writerA.close()
+                        #writerB.close()
+                        print("elapsed:", sestime)
+                        print("movie dur:", movtime)
+                        print("breaking")
+                        break 
+                    # time.sleep(1)
+
+                    if arduino.in_waiting > 0:
+                        data = arduino.readline()
+                        if data.rstrip().decode('utf-8')=='Q':
+                            print("elapsed:", sestime)
+                            print("movie dur:", movtime)
+                            print("breaking")
+                            break
+        except KeyboardInterrupt:
+            print("ABORT loop")
+            should_continue=False
+            pass
+
+        finally:
+            self.close()
 
     # @threaded
     # def save_frame(self, frame, writer_obj, metadata=None):
@@ -406,8 +521,6 @@ class Basler():
         
     #     writer_obj.release()
         
-    def close(self):
-        self.camera.Close()
 
     
 
