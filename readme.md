@@ -3,7 +3,11 @@
 ### Hardware
 
 1. Connect Basler USB 3.0 to the computer.
+
+Optional Steps for hardware trigger:
+
 2. Connect Pin 9 of Arduino with Pin 1 (Brown cable) of the Basler, and GND pin of Arduino with Pin 6 (White cable) of the Basler.
+
 3. Connect Arduino to the computer
 
 ### Software
