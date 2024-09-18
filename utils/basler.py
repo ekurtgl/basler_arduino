@@ -314,6 +314,7 @@ class Basler():
                     if self.predict:
                         self.predictor.frame = self.latest_frame
                         self.predictor.n_frame = self.nframes
+                        self.predictor.get_random_prediction()
 
                     if self.preview:
                         self.vid_show.frame = self.latest_frame

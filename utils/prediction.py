@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
@@ -19,7 +20,8 @@ class Predictor():
         self.save_dir = save_dir
         self.model_path = model_path
         self.stopped = False
-        self.get_random_prediction()
+        # self.get_random_prediction()
+        self.pred_result = np.random.randint(50, 300, size=(3, 5, 2))
 
         if self.model_path == '':
             print('model_path is not provided, drawing random predictions')
@@ -31,8 +33,10 @@ class Predictor():
         self.predict()
         return self
     
+    @threaded
     def get_random_prediction(self):
-        self.pred_result = np.random.randint(50, 300, size=(3, 5, 2))
+        self.pred_result = np.random.randint(50, 500, size=(3, 5, 2))
+        time.sleep(0.01)
         # self.pred_result = np.array([[[10, 20], [30, 40], [50, 60], [70, 80], [90, 100]],
         #                              [[200, 220], [210, 230], [240, 250], [250, 240], [270, 270]]])
     
