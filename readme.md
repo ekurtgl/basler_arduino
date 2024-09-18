@@ -28,7 +28,7 @@ sudo vim my-newrule.rules
 # add the following
 KERNEL=="ttyACM0", MODE="0666"
 ```
-Restart the computer for access rights to take effect.
+Restart the computer for the access rights to take effect.
 
 ## Hardware Troubleshoot
 
