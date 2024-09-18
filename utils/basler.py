@@ -93,12 +93,14 @@ class Basler():
         
         if self.predict:
             self.predictor = Predictor(self.args.model_path)
-            self.predictor.start()
-            
+            # self.predictor.start()
+
         if self.preview:
             # self.initialize_preview()
             self.vid_show = VideoShow(self.name, self.preview_predict)
             self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
+            if self.vid_show.show_pred:
+                self.vid_show.pred_result = self.predictor.pred_result
             self.vid_show.start()
 
         if self.save:
@@ -308,10 +310,21 @@ class Basler():
                     # Access the image data.
                     metadata[grabResult.ID]['time_stamp'] = datetime.now().strftime("%Y%m%d_%H_%M_%S.%f")  # microsec precision
                     # self.frames.append(image)
-                    if self.preview:  # and grabResult.ImageNumber % 10 == 0:
-                    #     self.preview_queue.put_nowait(self.latest_frame)
+
+                    if self.predict:
+                        self.predictor.frame = self.latest_frame
+                        self.predictor.n_frame = self.nframes
+
+                    if self.preview:
                         self.vid_show.frame = self.latest_frame
                         self.vid_show.n_frame = self.n + 1
+                        if self.preview_predict:
+                            self.vid_show.pred_result = self.predictor.pred_result
+
+                    # if self.preview:  # and grabResult.ImageNumber % 10 == 0:
+                    # #     self.preview_queue.put_nowait(self.latest_frame)
+                    #     self.vid_show.frame = self.latest_frame
+                    #     self.vid_show.n_frame = self.n + 1
                         # k = self.update_preview()
                         # if k == 27:  # ASCII value for “ESC”
                         #     break
@@ -347,9 +360,13 @@ class Basler():
             should_continue=False
             if self.save:
                 self.save_vid_metadata(metadata)
-
+            
         finally:
             self.close()
+            if self.preview:
+                self.vid_show.stop()
+            if self.predict:
+                self.predictor.stop()
             print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - start_time} sec.')
             print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
 
@@ -466,9 +483,11 @@ class Basler():
                         
                     frame = self.convert_image(image_result)
 
+                    # if self.nframes % 10 == 0:
                     if self.predict:
                         self.predictor.frame = frame
                         self.predictor.n_frame = self.nframes
+                        self.predictor.get_random_prediction()
 
                     if self.preview:
                         self.vid_show.frame = frame
@@ -528,8 +547,8 @@ class Basler():
                             self.vid_show.stop()
                         # print("elapsed:", sestime)
                         # print("movie dur:", movtime)
-                        print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
-                        print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+                        # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+                        # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
                         print("Breaking...")
                         break 
                     # time.sleep(1)
@@ -550,9 +569,16 @@ class Basler():
             should_continue=False
             if self.save:
                 self.save_vid_metadata(metadata)
-
+            
         finally:
             self.close()
+            if self.preview:
+                self.vid_show.stop()
+            if self.predict:
+                self.predictor.stop()
+            print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+            
 
     def save_vid_metadata(self, metadata=None):
         if metadata is not None:

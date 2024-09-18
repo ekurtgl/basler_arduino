@@ -1,5 +1,14 @@
+import os
 import cv2
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
+
+tp = ThreadPoolExecutor(5)  # max 10 threads
+
+def threaded(fn):
+    def wrapper(*args, **kwargs):
+        return tp.submit(fn, *args, **kwargs)  # returns Future object
+    return wrapper
 
 class VideoShow:
     """
@@ -15,7 +24,7 @@ class VideoShow:
         self.pred_result = None
         self.circle_radius = 5
         self.thickness = -1  # fill the circle
-        self.colors = ['r', 'b', 'g', 'y', 'm', 'c']
+        self.colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)] # BGR
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.pos = (50, 50)
         self.fontScale = 1
@@ -23,10 +32,13 @@ class VideoShow:
         self.fontthickness = 2
 
     def start(self):
-        Thread(target=self.show, args=()).start()
+        # Thread(target=self.show, args=()).start()
+        self.show()
         return self
-
+    
+    @threaded
     def show(self):
+        # os.sched_setaffinity(0, [1, 2, 3, 4])
         while not self.stopped:
             if self.show_pred:
                 for target_number, target in enumerate(self.pred_result):
