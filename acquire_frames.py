@@ -9,6 +9,67 @@ from utils.basler import Basler
 from utils.arduino import Arduino
 from utils.helpers import str_to_bool
 
+
+def initialize_and_loop(tuple_list_item, report_period=5): #config, camname, cam, args, experiment, start_t): #, arduino):
+    
+    config, camname, cam, args, experiment, start_t, trigger_with_arduino, arduino = tuple_list_item
+
+    if trigger_with_arduino and arduino is None:
+        raise ValueError('Trigger with Arduino is but not initialized.')
+    
+    acquisition_fps=cam['options']['AcquisitionFrameRate']
+    videowrite_fps = acquisition_fps if args.videowrite_fps is None else args.videowrite_fps
+    args.videowrite_fps = videowrite_fps
+
+    if cam['type'] == 'Realsense':
+        raise NotImplementedError
+    elif cam['type'] == 'PointGrey':
+        raise NotImplementedError
+    elif cam['type'] == 'Basler':
+        device = Basler(args, cam, experiment, config, start_t, cam_id=0)
+    else:
+        raise ValueError('Invalid camera type: %s' % cam['type'])
+    
+    # if args.verbose and device.writer_obj is not None:
+    #     print("ACQ: %.2f" % device.acquisition_fps, device.writer_obj.nframes_per_file)
+    
+    if trigger_with_arduino:
+        cmd = "S{}\r\n".format(int(device.cam['options']['AcquisitionFrameRate']))
+        arduino.arduino.write(cmd.encode())
+        print("***Sent msg to Arduino: {} ***".format(cmd))
+        time.sleep(0.5)
+        recv = arduino.arduino.readline()
+        print(recv)
+        print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
+        time.sleep(0.5)
+        device.start()
+        time.sleep(0.5)
+
+        try:
+            future = device.get_n_frames_arduino(args.n_total_frames, arduino=arduino.arduino)
+            # future.result()
+        except KeyboardInterrupt:
+            print("Aborted in main")
+            #if cam['master'] in [True, 'True']:
+            arduino.arduino.write("Q\r\n".encode()) #b'Q\r\n')
+            print("Closed Arduino")
+        finally:
+            #if cam['master'] in [True, 'True']:
+            print("Closing Arduino")
+            arduino.arduino.write("Q\r\n".encode()) #b'Q\r\n')
+            print("Exiting.")
+
+    else:
+        try:
+            future = device.get_n_frames(args.n_total_frames)
+            # future.result()
+        except KeyboardInterrupt:
+            print("Aborted in main")
+        finally:
+            print("Exiting.")
+
+    return ("done")
+
 def main():
     parser = argparse.ArgumentParser(description='Multi-device acquisition in Python.')
     parser.add_argument('-n','--name', type=str, default='JB999',
@@ -17,6 +78,12 @@ def main():
         help='Configuration for acquisition. Defines number of cameras, serial numbers, etc.')
     parser.add_argument('-p', '--preview', default='False', # action='store_true',
         help='Show preview in opencv window')
+    parser.add_argument('--predict', default='False',
+        help='Make detection inference from the trained model')
+    parser.add_argument('--preview_prediction', default='False',
+        help='Show detections overlayed on preview in opencv window')
+    parser.add_argument('--model_path', default='', type=str, 
+        help='Path to the prediction model')
     parser.add_argument('-s', '--save', default="True", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
     parser.add_argument('-v', '--verbose', default=False, action='store_true',
@@ -62,6 +129,8 @@ def main():
     if trigger_with_arduino:
         arduino = Arduino(port=args.port, baudrate=115200)
         arduino.initialize()
+    else:
+        arduino = None
 
     # experiment = '%s_%s' % (time.strftime('%Y-%m-%d_%H%M%S', time.localtime()), args.name)
     experiment = datetime.now().strftime("%Y%m%d_%H_%M_%S_")  + args.name# microsec precision
@@ -76,46 +145,66 @@ def main():
             with open(os.path.join(directory, 'loaded_config_file.yaml'), 'w') as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
     
-    # start_t = time.perf_counter()
-    # tuple_list=[]
-    # for camname, cam in config['cams'].items():
-    #     pprint.pprint(f'camname: {camname} \n cam: {cam}')
-    #     tup = (config, camname, cam, args, experiment, start_t, trigger_with_arduino) #, serial_queue) #, arduino)
+    start_t = time.perf_counter()
+    tuple_list=[]
+    for camname, cam in config['cams'].items():
+        pprint.pprint(f'camname: {camname} \n cam: {cam}')
+        tup = (config, camname, cam, args, experiment, start_t, trigger_with_arduino, arduino) #, serial_queue) #, arduino)
+        tuple_list.append(tup)
     #     #p = mp.Process(target=initialize_and_loop, args=(tup,))
     #     #p.start()
-    #     tuple_list.append(tup)
-    # tuple_list = (config, camname, cam, args, experiment, start_t, trigger_with_arduino)
-    camname = list(config['cams'].keys())[0]
-    cam = config['cams'][camname]
-    # pprint.pprint(f'camname: {camname} \n cam: {cam}')
-    start_time = time.perf_counter()
-    cam1 = Basler(args, cam, experiment, config, start_time, cam_id=0)
-    # pprint.pprint(dir(cam1.camera))
-
-    if args.acquisition_mode == 'frames':
-        if trigger_with_arduino:
-            cmd = "S{}\r\n".format(int(cam1.cam['options']['AcquisitionFrameRate']))
-            arduino.arduino.write(cmd.encode())
-            print("***Sent msg to Arduino: {} ***".format(cmd))
-            time.sleep(0.5)
-            recv = arduino.arduino.readline()
-            print(recv)
-            print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
-            time.sleep(0.5)
-            cam1.start()
-            time.sleep(0.5)
-            cam1.loop(arduino=arduino.arduino)
-        else:            
-            future = cam1.get_n_frames(args.n_total_frames)
-            future.result()
     
-    elif args.acquisition_mode == 'duration':
-        if trigger_with_arduino:
-            pass
-        else:
-            acquisition_time = time.perf_counter()
-            while time.perf_counter() - acquisition_time < args.experiment_duration:
-                cam1.get_n_frames(1, save_vid=False)
+    if len(tuple_list) > 1: # if there are multiple cameras
+        return NotImplementedError
+    
+    elif len(tuple_list) == 1 and cam['type'] == 'Basler':  # if only Basler
+        
+        if args.acquisition_mode == 'frames':
+            initialize_and_loop(tuple_list[0], report_period=5)
+        
+        # elif args.acquisition_mode == 'duration':
+        #     if trigger_with_arduino:
+        #         pass
+        #     else:
+        #         acquisition_time = time.perf_counter()
+        #         while time.perf_counter() - acquisition_time < args.experiment_duration:
+        #             cam1.get_n_frames(1, save_vid=False)
+
+    # tuple_list = (config, camname, cam, args, experiment, start_t, trigger_with_arduino)
+    
+    
+    
+    # camname = list(config['cams'].keys())[0]
+    # cam = config['cams'][camname]
+    # # pprint.pprint(f'camname: {camname} \n cam: {cam}')
+    # cam1 = Basler(args, cam, experiment, config, start_t, cam_id=0)
+    # # pprint.pprint(dir(cam1.camera))
+
+    # if args.acquisition_mode == 'frames':
+    #     if trigger_with_arduino:
+    #         cmd = "S{}\r\n".format(int(cam1.cam['options']['AcquisitionFrameRate']))
+    #         arduino.arduino.write(cmd.encode())
+    #         print("***Sent msg to Arduino: {} ***".format(cmd))
+    #         time.sleep(0.5)
+    #         recv = arduino.arduino.readline()
+    #         print(recv)
+    #         print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
+    #         time.sleep(0.5)
+    #         cam1.start()
+    #         time.sleep(0.5)
+    #         future = cam1.get_n_frames_arduino(args.n_total_frames, arduino=arduino.arduino)
+    #         future.result()
+    #     else:            
+    #         future = cam1.get_n_frames(args.n_total_frames)
+    #         future.result()
+    
+    # elif args.acquisition_mode == 'duration':
+    #     if trigger_with_arduino:
+    #         pass
+    #     else:
+    #         acquisition_time = time.perf_counter()
+    #         while time.perf_counter() - acquisition_time < args.experiment_duration:
+    #             cam1.get_n_frames(1, save_vid=False)
 
     # get all active child processes
     active = mp.active_children()

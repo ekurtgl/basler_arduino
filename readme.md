@@ -1,7 +1,15 @@
+# Installation 
 
-### Installation 
+### Hardware
 
-Download and install [Basler Pylon SDK](https://www2.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware).
+1. Connect Basler USB 3.0 to the computer.
+2. Connect Pin 9 of Arduino with Pin 1 (Brown cable) of the Basler, and GND pin of Arduino with Pin 6 (White cable) of the Basler.
+3. Connect Arduino to the computer
+
+### Software
+
+1. Upload `Arduino_trigger.ino` file to the Arduino.
+2. Download and install [Basler Pylon SDK](https://www2.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware).
 
 
 ### Set Arduino access rights
@@ -16,8 +24,9 @@ sudo vim my-newrule.rules
 # add the following
 KERNEL=="ttyACM0", MODE="0666"
 ```
+Restart the computer for access rights to take effect.
 
-# Hardware Setup
+## Hardware Troubleshoot
 
 For GPIO coax cable color codes, refer [here](https://docs.baslerweb.com/basler-io-cable-hrs-6p-open-p?_gl=1*6p8gh3*_gcl_au*MTQyMTg2MzkwOC4xNzI2MDg5ODQ4).
 
