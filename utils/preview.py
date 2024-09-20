@@ -24,7 +24,7 @@ class VideoShow:
         self.pred_result = None
         self.circle_radius = 5
         self.thickness = -1  # fill the circle
-        self.colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)] # BGR
+        self.colors = [(255, 0, 0), (0, 255, 0), (33, 222, 255), (0, 0, 255)] # BGR
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.pos = (50, 50)
         self.fontScale = 1
@@ -43,7 +43,7 @@ class VideoShow:
             if self.show_pred:
                 for target_number, target in enumerate(self.pred_result):
                     for key_point in target:
-                        self.frame = cv2.circle(self.frame, (key_point[0], key_point[1]), self.circle_radius, self.colors[target_number], self.thickness)
+                        self.frame = cv2.circle(self.frame, (key_point[1], key_point[0]), self.circle_radius, self.colors[target_number], self.thickness)
                 self.frame = cv2.putText(self.frame, f'Frame: {self.n_frame}', self.pos, self.font, 
                                         self.fontScale, self.fontcolor, self.fontthickness, cv2.LINE_AA)
                 cv2.imshow(self.name, self.frame)

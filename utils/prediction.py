@@ -35,7 +35,15 @@ class Predictor():
     
     @threaded
     def get_random_prediction(self):
-        self.pred_result = np.random.randint(50, 500, size=(3, 5, 2))
+        # self.pred_result = np.random.randint(100, 500, size=(3, 5, 2))
+        centers = np.random.randint(100, 1000, size=(4, 2))
+        pos = [[[center[0] - 40, center[1]], # head
+                [center[0], center[1] + 20], # lwing
+                [center[0], center[1] - 20], # rwing
+                [center[0] + 40, center[1] + 15], # lleg
+                [center[0] + 40, center[1] - 15]] # rleg
+                for center in centers]
+        self.pred_result = pos
         time.sleep(0.01)
         # self.pred_result = np.array([[[10, 20], [30, 40], [50, 60], [70, 80], [90, 100]],
         #                              [[200, 220], [210, 230], [240, 250], [250, 240], [270, 270]]])
