@@ -1,0 +1,16 @@
+{
+  "1": {"duration_sec": "5",
+        "stimulation": "1",
+        "stimulation_turnOn_times_sec": ["2", "4"],
+        "stimulation_durations_ms": ["700", "800"],
+        "pulse_ontime_ms": ["250", "500"],
+        "pulse_offtime_ms": ["350", "50"]},
+  "2": {"duration_sec": "1",
+        "stimulation": "0"},
+  "3": {"duration_sec": "3",
+        "stimulation": "1",
+        "stimulation_turnOn_times_sec": ["2", "4"],
+        "stimulation_durations_ms": ["700", "800"],
+        "pulse_ontime_ms": ["250", "500"],
+        "pulse_offtime_ms": ["350", "50"]}
+}
