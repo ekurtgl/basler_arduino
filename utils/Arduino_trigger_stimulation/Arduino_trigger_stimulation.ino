@@ -31,6 +31,7 @@ void setup(void)
   Serial.begin(115200); //9600);
   //mySerial.begin(600);
   digitalWrite(LedPin, LOW);
+  digitalWrite(stimulationPin, LOW);
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
