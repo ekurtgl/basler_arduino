@@ -4,7 +4,10 @@
 const byte rxPin = 2;
 const byte txPin = 3;
 SoftwareSerial mySerial(rxPin, txPin, 1);
-const int LedPin = 9;
+const int LedPin = 11; // 9 for timer1, 11 for timer2;
+int onTime, offTime; // Variables to hold on and off times
+volatile int counter = 0; // Counter to track ISR calls
+volatile bool ledState = false; // Current state of the LED
 bool pinStatus = 0;
 long fps = 120;
 float duration = 5000.0;
@@ -40,7 +43,8 @@ void setup() {
   digitalWrite(LedPin, LOW);
   digitalWrite(stimulationPin, LOW);
   pinMode(LED_BUILTIN, OUTPUT);
-  // pinMode(stimulationPin, OUTPUT);
+  pinMode(LedPin, OUTPUT);
+  
 }
 
 void loop() {
@@ -59,8 +63,6 @@ void loop() {
       switch (firstLetter) {
         case 'D':
           decode_stimulation();
-          stimProfileIndex = 1;
-          update_stimParams();
           break;
         case 'V':
           stop_stimulation();
@@ -72,11 +74,7 @@ void loop() {
           stop_frame_trigger();
           break;
         case 'T':
-          stimProfileIndex = 1;
-          update_stimParams();
-          stimTrigger = true;
-          startTime = millis();
-          Serial.println("Stimulation trigger received.");
+          trigger_stimulation();
           break;          
         default:
           Serial.print("Unrecognized first letter: ");
@@ -153,15 +151,18 @@ void Timer1_ISR(void) {
   digitalWrite(stimulationPin, !digitalRead(stimulationPin));
 }
 
+void trigger_stimulation(void) {
+  stimProfileIndex = 1;
+  update_stimParams();
+  stimTrigger = true;
+  startTime = millis();
+  Serial.println("Stimulation trigger received.");
+}
+
 void start_stimulation(void) {
-  Timer1.initialize(1000000 / (1000 / stimPulseDur)); // microsec
-  // Timer1.initialize(float(1000 * stimPulseDur)); // microsec
-  // Timer1.initialize(1000000 / stimPulseDur * 1000); // microsec
-  float cur_duty = (float(stimPulseDutyCycle) / 100) * 1023;
-  Timer1.pwm(stimulationPin, cur_duty);
-  // Timer1.pwm(stimulationPin, float(stimPulseDutyCycle) / 100 * 1023);
+  Timer1.initialize(1000 * float(stimPulseDur)); // microsec
+  Timer1.pwm(stimulationPin, (float(stimPulseDutyCycle) / 100) * 1023);
   // Timer1.setPwmDuty(stimulationPin, (stimPulseDutyCycle / 100) * 1023);
-  // Timer1.pwm(stimulationPin, (stimPulseDutyCycle / 100) * 1023, stimPulseDur * 1000);
   // Timer1.attachInterrupt(Timer1_ISR, stimPulseDur * 10);
   // Timer1.start();
   // Timer1.initialize(1000000 / 10);
@@ -182,7 +183,7 @@ void stop_stimulation(void) {
 }
 
 void start_frame_trigger(void) {
-  // fps = Serial.parseInt();
+  
   String* parsedValues = parseInputString(inputString, delimiter);
   int valueCount = getValueCount(inputString, delimiter);  // Get the count of parsed values
   // Serial.print("valueCount: ");
@@ -192,27 +193,123 @@ void start_frame_trigger(void) {
   //   Serial.println(parsedValues[i]);
   // }
   fps = parsedValues[1].toInt();
-  Serial.print("Received fps: ");
-  Serial.println(fps);
+  // Serial.print("Received fps: ");
+  // Serial.println(fps);
 
-  if (pinStatus == 1) {
-    stop_frame_trigger();
-  }
+  // if (pinStatus == 1) {
+  //   stop_frame_trigger();
+  // }
 
-  // if (pinStatus == 0) {
-  Timer1.initialize(1000000 / fps); // 40 us = 25 kHz
-  dutyCycle = duration / (1000000 / fps); // calculate duty cycle to have pulse length ~5ms
-  Serial.print("Duty cycle: ");
-  Serial.println(dutyCycle);
-  Timer1.pwm(LedPin, (dutyCycle) * 1023);
+  // // if (pinStatus == 0) {
+  // Timer1.initialize(1000000 / fps); // 40 us = 25 kHz
+  // dutyCycle = duration / (1000000 / fps); // calculate duty cycle to have pulse length ~5ms
+  // Serial.print("Duty cycle: ");
+  // Serial.println(dutyCycle);
+  // Timer1.pwm(LedPin, (dutyCycle) * 1023);
+
+  // setupBlink_Timer2(int(fps), 50);
+  setupBlink_Timer2(int(fps) * 100, 100 / 3);  // multiply fps by 100 when using timer2, duty cycle 30-33%
+  // setupBlink_Timer2(2, 50);
+  // setupPWM_Timer2(int(fps));
+
   pinStatus = 1;
   Serial.println("Frame trigger started.");
   // }
 }
 
+void setupBlink_Timer2(int FPS, float dutyCycle) {
+  // Calculate the timer period in microseconds
+  unsigned long period = 1000000 / FPS; // Full period in microseconds
+
+  // Calculate on and off times based on the duty cycle
+  onTime = int((period * dutyCycle) / 100); // Time LED stays on in microseconds
+  offTime = period - onTime; // Time LED stays off in microseconds
+
+  // Set up Timer2 for CTC mode (Clear Timer on Compare Match)
+  TCCR2A = (1 << WGM21);  // CTC mode
+  TCCR2B = (1 << CS22) | (1 << CS21) | (1 << CS20);  // Prescaler set to 1024
+
+  // Set the initial compare match value based on the onTime
+  OCR2A = ((onTime * 16) / 1024) - 1;  // Convert microseconds to timer counts
+
+  // Enable Timer2 compare interrupt
+  TIMSK2 = (1 << OCIE2A);
+}
+
+ISR(TIMER2_COMPA_vect) {
+  counter++;
+
+  if (ledState && counter * 1024UL / 16 >= onTime) {
+    ledState = false;  // Turn LED off
+    OCR2A = ((offTime * 16) / 1024) - 1;  // Set next compare to offTime
+    counter = 0;
+  } else if (!ledState && counter * 1024UL / 16 >= offTime) {
+    ledState = true;  // Turn LED on
+    OCR2A = ((onTime * 16) / 1024) - 1;  // Set next compare to onTime
+    counter = 0;
+  }
+
+  digitalWrite(LedPin, ledState); // Update the LED
+}
+
+void setupPWM_Timer2(int FPS) {
+
+  // Stop the timer while configuring
+  TCCR2A = 0;              // Clear control register A
+  TCCR2B = 0;              // Clear control register B
+  TCNT2  = 0;              // Initialize counter to 0
+
+  // Set Fast PWM mode with non-inverted output on OC2A (Pin 11)
+  TCCR2A |= (1 << WGM21) | (1 << WGM20);  // Fast PWM Mode
+  TCCR2A |= (1 << COM2A1);                // Non-inverted PWM
+
+  // Calculate the required PWM frequency
+  long pwmFrequency = FPS;
+
+  // Calculate the necessary prescaler based on the desired FPS (f_PWM)
+  long baseFrequency = 16000000L; // Arduino clock speed is 16 MHz
+  int prescaler = 1;
+  if (pwmFrequency < baseFrequency / (256L * 1024)) {
+    prescaler = 1024;
+    TCCR2B |= (1 << CS22) | (1 << CS21) | (1 << CS20);
+  } else if (pwmFrequency < baseFrequency / (256L * 256)) {
+    prescaler = 256;
+    TCCR2B |= (1 << CS22) | (1 << CS21);
+  } else if (pwmFrequency < baseFrequency / (256L * 128)) {
+    prescaler = 128;
+    TCCR2B |= (1 << CS22) | (1 << CS20);
+  } else if (pwmFrequency < baseFrequency / (256L * 64)) {
+    prescaler = 64;
+    TCCR2B |= (1 << CS22);
+  } else if (pwmFrequency < baseFrequency / (256L * 32)) {
+    prescaler = 32;
+    TCCR2B |= (1 << CS21) | (1 << CS20);
+  } else if (pwmFrequency < baseFrequency / (256L * 8)) {
+    prescaler = 8;
+    TCCR2B |= (1 << CS21);
+  } else {
+    prescaler = 1;
+    TCCR2B |= (1 << CS20);
+  }
+
+  // Set OCR2A (duty cycle)
+  OCR2A = 128;  // Set duty cycle to 50%
+
+  // Now the PWM frequency is set to approximately the given FPS
+  long actualFrequency = baseFrequency / (prescaler * 256L);
+  
+  Serial.print("Actual PWM Frequency: ");
+  Serial.println(actualFrequency);
+}
+
 void stop_frame_trigger(void) {
-  Timer1.disablePwm(LedPin);
-  Timer1.stop();
+  // Timer1.disablePwm(LedPin);
+  // Timer1.stop();
+
+  // Stop the timer and disable PWM by clearing the relevant bits
+  TCCR2A = 0;  // Clear the Timer2 control register A (disables PWM)
+  TCCR2B = 0;  // Clear the Timer2 control register B (stops the timer)
+  TIMSK2 = 0;
   Serial.println("Frame trigger stopped.");
   pinStatus = 0;
 }

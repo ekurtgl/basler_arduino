@@ -1,16 +1,16 @@
 {
-  "1": {"duration_sec": "5",
+  "1": {"duration_sec": "8",
         "stimulation": "1",
         "stimulation_turnOn_times_sec": ["2", "4"],
-        "stimulation_durations_ms": ["700", "800"],
-        "pulse_ontime_ms": ["250", "500"],
-        "pulse_offtime_ms": ["350", "50"]},
+        "stimulation_durations_ms": ["1000", "2000"],
+        "pulse_ontime_ms": ["50", "250"],
+        "pulse_offtime_ms": ["50", "250"]},
   "2": {"duration_sec": "1",
         "stimulation": "0"},
-  "3": {"duration_sec": "3",
+  "3": {"duration_sec": "5",
         "stimulation": "1",
-        "stimulation_turnOn_times_sec": ["2", "4"],
-        "stimulation_durations_ms": ["700", "800"],
-        "pulse_ontime_ms": ["250", "500"],
-        "pulse_offtime_ms": ["350", "50"]}
+        "stimulation_turnOn_times_sec": ["0", "3"],
+        "stimulation_durations_ms": ["2000", "2000"],
+        "pulse_ontime_ms": ["250", "10"],
+        "pulse_offtime_ms": ["500", "50"]}
 }

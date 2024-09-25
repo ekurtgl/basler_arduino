@@ -51,6 +51,7 @@ def decode_stimulation():
 
 arduino = Arduino(port='/dev/ttyACM0', baudrate=115200)
 arduino.initialize()
+time.sleep(0.5)
 
 (block_durations, stimulation_turnOn_times_global,
             stimulation_durations, pulse_intervals,
@@ -63,13 +64,29 @@ print(f'stimulation_durations: {stimulation_durations}')
 print(f'pulse_intervals: {pulse_intervals}')
 print(f'pulse_dutyCycles: {pulse_dutyCycles}\n')
 
-cmd = "R,{},{}\r\n".format(pulse_intervals[0], pulse_dutyCycles[0])
+stim_profiles = [f'{stimulation_turnOn_times_global[i]}-{stimulation_durations[i]}-' + 
+                    f'{pulse_intervals[i]}-{pulse_dutyCycles[i]}' for i in range(len(stimulation_turnOn_times_global))]
+cmd = 'D,' + ','.join(stim_profiles) + '\n'
 arduino.arduino.write(cmd.encode())
-print("***Sent stimulation start cmd to Arduino: {} ***".format(cmd))
+print("\n***Sent stimulation start cmd to Arduino: {} ***".format(cmd))
 time.sleep(0.5)
+arduino.continuous_listen = True
+arduino.listen()
+# start_t = time.perf_counter()
 
-recv = arduino.arduino.readline()
-print(recv)
-print("Received msg from arduino: {}".format(recv.rstrip().decode('utf-8')))
+# while time.perf_counter() - start_t < 0.5:
+#     recv = arduino.arduino.readline()
+#     # print(recv)
+#     print("Received msg from arduino: {}".format(recv.rstrip().decode('utf-8')))
 
+cmd = 'T\n'
+arduino.arduino.write(cmd.encode())
+print("\n***Sent stimulation trigger cmd to Arduino: {} ***".format(cmd))
+# time.sleep(0.5)
+
+# recv = arduino.arduino.readline()
+# # print(recv)
+# print("Received msg from arduino: {}".format(recv.rstrip().decode('utf-8')))
+time.sleep(sum(block_durations))
+arduino.continuous_listen = False
 arduino.arduino.close()

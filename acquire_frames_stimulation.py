@@ -47,16 +47,16 @@ def initialize_and_loop(tuple_list_item, report_period=5): #config, camname, cam
     #     print("ACQ: %.2f" % device.acquisition_fps, device.writer_obj.nframes_per_file)
     
     if trigger_with_arduino:
-        cmd = "S{}\r\n".format(int(device.cam['options']['AcquisitionFrameRate']))
+        cmd = "S,{}\r\n".format(int(device.cam['options']['AcquisitionFrameRate']))
         arduino.arduino.write(cmd.encode())
         print("***Sent msg to Arduino: {} ***".format(cmd))
         time.sleep(0.5)
-        recv = arduino.arduino.readline()
-        print(recv)
-        print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
-        time.sleep(0.5)
+        # recv = arduino.arduino.readline()
+        # print(recv)
+        # print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
+        # time.sleep(0.5)
         device.start()
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
         try:
             grab_start_t = time.perf_counter()
@@ -146,6 +146,8 @@ def main():
     if trigger_with_arduino:
         arduino = Arduino(port=args.port, baudrate=115200)
         arduino.initialize()
+        time.sleep(0.5)
+        arduino.listen()
     else:
         arduino = None
 
@@ -172,11 +174,12 @@ def main():
     #     #p = mp.Process(target=initialize_and_loop, args=(tup,))
     #     #p.start()
     
-    # if args.stimulation_path != '':
-    #     stimulator = Stimulator(args, start_t, arduino, cam, os.path.join(directory, 'loaded_stimulation_config.json'))
-    #     print('\nStimulation parameters:')
-    #     stimulator.print_params()
-
+    if args.stimulation_path != '':
+        stimulator = Stimulator(args, arduino, cam, os.path.join(directory, 'loaded_stimulation_config.json'))
+        print('\nStimulation parameters:')
+        stimulator.print_params()
+        stimulator.send_stim_config()
+        
     if len(tuple_list) > 1: # if there are multiple cameras
         return NotImplementedError
     
@@ -188,12 +191,8 @@ def main():
             while grab_start_t is None:
                 continue
 
-            # if args.stimulation_path != '':
-            #     stimulator = Stimulator(args, grab_start_t, arduino, cam, os.path.join(directory, 'loaded_stimulation_config.json'))
-            #     print('\nStimulation parameters:')
-            #     stimulator.print_params()
-            #     stimulator.monitor = True
-            #     stimulator.start_monitoring()
+            if args.stimulation_path != '':
+                stimulator.send_stim_trigger()
 
     future.result()
 

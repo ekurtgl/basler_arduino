@@ -14,9 +14,8 @@ def threaded(fn):
 
 class Stimulator():
 
-    def __init__(self, args, start_t, arduino, cam, save_path=None) -> None:
+    def __init__(self, args, arduino, cam, save_path=None) -> None:
         self.args = args
-        self.start_t = start_t
         self.arduino = arduino
         self.cam = cam
         self.save_path = save_path
@@ -80,6 +79,18 @@ class Stimulator():
         print(f'pulse_intervals: {self.pulse_intervals}')
         print(f'pulse_dutyCycles: {self.pulse_dutyCycles}\n')
     
+    def send_stim_config(self):
+        stim_profiles = [f'{self.stimulation_turnOn_times_global[i]}-{self.stimulation_durations[i]}-' + 
+                         f'{self.pulse_intervals[i]}-{self.pulse_dutyCycles[i]}' for i in range(len(self.stimulation_turnOn_times_global))]
+        cmd = 'D,' + ','.join(stim_profiles) + '\n'
+        self.arduino.arduino.write(cmd.encode())
+        print("***Sent stimulation config cmd to Arduino: {} ***".format(cmd))
+    
+    def send_stim_trigger(self):
+        cmd = 'T\n'
+        self.arduino.arduino.write(cmd.encode())
+        print("***Sent stimulation trigger cmd to Arduino: {} ***".format(cmd))
+
     @threaded
     def start_monitoring(self):
         if self.arduino is None:
@@ -89,7 +100,7 @@ class Stimulator():
             if time.perf_counter() - self.start_t > self.stimulation_turnOn_times_global[0]:
                 cmd = "Re,{},{}\r\n".format(self.pulse_intervals[0], self.pulse_dutyCycles[0])
                 self.arduino.arduino.write(cmd.encode())
-                print(f'\nStimulation start time: {round(time.perf_counter() - self.start_t, 2)} sec.')
+                # print(f'\nStimulation start time: {round(time.perf_counter() - self.start_t, 2)} sec.')
                 print("***Sent stimulation start cmd to Arduino: {} ***".format(cmd))
                 self.stimulation_turnOn_times_global.pop(0)
                 self.pulse_intervals.pop(0)
