@@ -1,5 +1,6 @@
 import os
 import cv2
+from pynput import keyboard
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 
@@ -30,12 +31,24 @@ class VideoShow:
         self.fontScale = 1
         self.fontcolor = (255, 255, 255) # white
         self.fontthickness = 2
+        
+        self.listener = keyboard.Listener(on_press=self.on_key_event)
+        self.listener.start()
 
     def start(self):
         # Thread(target=self.show, args=()).start()
         self.show()
         return self
     
+    @threaded
+    def on_key_event(self, event):
+        if event.char == 'p':  # Check if the pressed key is 'p'
+            print("You toggled keypoint preview!")
+            self.show_pred = not self.show_pred
+        if event.char == 'q':  # Check if the pressed key is 'p'
+            print("You closed the preview!")
+            self.stopped = True
+            
     @threaded
     def show(self):
         # os.sched_setaffinity(0, [1, 2, 3, 4])
@@ -54,6 +67,9 @@ class VideoShow:
             # print(self.n_frame)
             if cv2.waitKey(1) == ord("q"):
                 self.stopped = True
+            # elif cv2.waitKey(1) == ord("p"):
+            #     self.show_pred = not self.show_pred
+        cv2.destroyWindow(self.name)
 
     def stop(self):
         self.stopped = True
