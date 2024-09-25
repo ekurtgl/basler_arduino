@@ -13,24 +13,25 @@ def threaded(fn):
 
 
 class Arduino():
-    def __init__(self, port='/dev/ttyACM0', baudrate=115200, timeout=5) -> None:
+    def __init__(self, logger, port='/dev/ttyACM0', baudrate=115200, timeout=5) -> None:
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self.continuous_listen = False
+        self.logger = logger
         
     def initialize(self):
 
         self.arduino = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
         time.sleep(1)
         sys.stdout.flush()
-        print(f"Arduino connected to the serial port: {self.port}")
+        self.logger.info(f"Arduino connected to the serial port: {self.port}")
 
     @threaded
     def listen(self):
         while self.continuous_listen:
             recv = self.arduino.readline()
-            print("Received msg from arduino: {}".format(recv.rstrip().decode('utf-8')))
+            self.logger.info("Received msg from arduino: {}".format(recv.rstrip().decode('utf-8')))
         
 
     

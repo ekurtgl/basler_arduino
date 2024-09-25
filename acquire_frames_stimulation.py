@@ -3,6 +3,7 @@ import time
 import yaml
 import json
 import pprint
+import logging
 import argparse
 import multiprocessing as mp
 from datetime import datetime
@@ -13,7 +14,7 @@ from utils.stimulation import Stimulator
 from concurrent.futures import ThreadPoolExecutor
 
 
-tp = ThreadPoolExecutor(100)  # max 10 threads
+tp = ThreadPoolExecutor(10)  # max 10 threads
 
 def threaded(fn):
     def wrapper(*args, **kwargs):
@@ -23,7 +24,7 @@ def threaded(fn):
 grab_start_t = None
 
 @threaded
-def initialize_and_loop(tuple_list_item, report_period=5): #config, camname, cam, args, experiment, start_t): #, arduino):
+def initialize_and_loop(tuple_list_item, logger, report_period=5): #config, camname, cam, args, experiment, start_t): #, arduino):
     global grab_start_t
     config, camname, cam, args, experiment, start_t, trigger_with_arduino, arduino = tuple_list_item
 
@@ -39,7 +40,7 @@ def initialize_and_loop(tuple_list_item, report_period=5): #config, camname, cam
     elif cam['type'] == 'PointGrey':
         raise NotImplementedError
     elif cam['type'] == 'Basler':
-        device = Basler(args, cam, experiment, config, start_t, cam_id=0)
+        device = Basler(args, cam, experiment, config, start_t, logger, cam_id=0)
     else:
         raise ValueError('Invalid camera type: %s' % cam['type'])
     
@@ -49,7 +50,7 @@ def initialize_and_loop(tuple_list_item, report_period=5): #config, camname, cam
     if trigger_with_arduino:
         cmd = "S,{}\r\n".format(int(device.cam['options']['AcquisitionFrameRate']))
         arduino.arduino.write(cmd.encode())
-        print("***Sent msg to Arduino: {} ***".format(cmd))
+        logger.info("***Sent msg to Arduino: {} ***".format(cmd))
         time.sleep(0.5)
         # recv = arduino.arduino.readline()
         # print(recv)
@@ -59,29 +60,35 @@ def initialize_and_loop(tuple_list_item, report_period=5): #config, camname, cam
         # time.sleep(0.5)
 
         try:
-            grab_start_t = time.perf_counter()
             future = device.get_n_frames_arduino(args.n_total_frames, arduino=arduino.arduino)
+            # while device.frame_timer is None:
+            #     continue
+            grab_start_t = time.perf_counter()
             # future.result()
         except KeyboardInterrupt:
-            print("Aborted in main")
-            #if cam['master'] in [True, 'True']:
-            arduino.arduino.write("Q\r\n".encode()) #b'Q\r\n')
-            print("Closed Arduino")
+            logger.info("Aborted in main")
+            # arduino.arduino.write("Q\n".encode()) #b'Q\r\n')
+            # print("Closed Arduino")
         finally:
             #if cam['master'] in [True, 'True']:
-            print("Closing Arduino")
-            arduino.arduino.write("Q\r\n".encode()) #b'Q\r\n')
-            print("Exiting.")
+            logger.info("Closing Arduino")
+            arduino.arduino.write("Q\n".encode()) #b'Q\r\n')
+            time.sleep(0.2)
+            arduino.arduino.write("V\n".encode()) #b'Q\r\n')
+            time.sleep(0.2)
+            logger.info("Exited.")
 
     else:
         try:
-            grab_start_t = time.perf_counter()
             future = device.get_n_frames(args.n_total_frames)
+            # while device.frame_timer is None:
+            #     continue
+            grab_start_t = time.perf_counter()
             # future.result()
         except KeyboardInterrupt:
-            print("Aborted in main")
+            logger.info("Aborted in main")
         finally:
-            print("Exiting.")
+            logger.info("Exiting.")
 
     return ("done")
 
@@ -134,6 +141,10 @@ def main():
 
     args = parser.parse_args()
 
+    log_level = logging.INFO
+    logging.basicConfig(level=log_level)
+    logger = logging.getLogger("logger")
+
     if os.path.isfile(args.config):
         with open(args.config) as f:
             config = yaml.load(f, Loader=yaml.SafeLoader)
@@ -141,12 +152,12 @@ def main():
         raise ValueError('Invalid config file: %s' %args.config)
 
     trigger_with_arduino = str_to_bool(args.trigger_with_arduino)
-    print(f"Is Arduino: {trigger_with_arduino}")
     # if trigger_with_arduino or len(config['cams'])>1:
     if trigger_with_arduino:
-        arduino = Arduino(port=args.port, baudrate=115200)
+        arduino = Arduino(logger, port=args.port, baudrate=115200)
         arduino.initialize()
         time.sleep(0.5)
+        arduino.continuous_listen = True
         arduino.listen()
     else:
         arduino = None
@@ -163,7 +174,16 @@ def main():
             os.makedirs(directory)
             with open(os.path.join(directory, 'loaded_config_file.yaml'), 'w') as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-       
+
+        log_file = os.path.join(directory, 'logs.log')
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(log_level)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')    
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    logger.info(f"Is Arduino: {trigger_with_arduino}")
+    
     start_t = time.perf_counter()
     
     tuple_list=[]
@@ -175,8 +195,8 @@ def main():
     #     #p.start()
     
     if args.stimulation_path != '':
-        stimulator = Stimulator(args, arduino, cam, os.path.join(directory, 'loaded_stimulation_config.json'))
-        print('\nStimulation parameters:')
+        stimulator = Stimulator(args, arduino, cam, logger, os.path.join(directory, 'loaded_stimulation_config.json'))
+        logger.info('\nStimulation parameters:')
         stimulator.print_params()
         stimulator.send_stim_config()
         
@@ -186,70 +206,27 @@ def main():
     elif len(tuple_list) == 1 and cam['type'] == 'Basler':  # if only Basler
         
         if args.acquisition_mode == 'frames':
-            future = initialize_and_loop(tuple_list[0], report_period=5)
+            future = initialize_and_loop(tuple_list[0], logger, report_period=5)
 
-            while grab_start_t is None:
-                continue
+            # while grab_start_t is None:
+            #     continue
 
             if args.stimulation_path != '':
                 stimulator.send_stim_trigger()
 
     future.result()
 
-        # elif args.acquisition_mode == 'duration':
-        #     if trigger_with_arduino:
-        #         pass
-        #     else:
-        #         acquisition_time = time.perf_counter()
-        #         while time.perf_counter() - acquisition_time < args.experiment_duration:
-        #             cam1.get_n_frames(1, save_vid=False)
-
-    # tuple_list = (config, camname, cam, args, experiment, start_t, trigger_with_arduino)
-    
-    
-    
-    # camname = list(config['cams'].keys())[0]
-    # cam = config['cams'][camname]
-    # # pprint.pprint(f'camname: {camname} \n cam: {cam}')
-    # cam1 = Basler(args, cam, experiment, config, start_t, cam_id=0)
-    # # pprint.pprint(dir(cam1.camera))
-
-    # if args.acquisition_mode == 'frames':
-    #     if trigger_with_arduino:
-    #         cmd = "S{}\r\n".format(int(cam1.cam['options']['AcquisitionFrameRate']))
-    #         arduino.arduino.write(cmd.encode())
-    #         print("***Sent msg to Arduino: {} ***".format(cmd))
-    #         time.sleep(0.5)
-    #         recv = arduino.arduino.readline()
-    #         print(recv)
-    #         print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
-    #         time.sleep(0.5)
-    #         cam1.start()
-    #         time.sleep(0.5)
-    #         future = cam1.get_n_frames_arduino(args.n_total_frames, arduino=arduino.arduino)
-    #         future.result()
-    #     else:            
-    #         future = cam1.get_n_frames(args.n_total_frames)
-    #         future.result()
-    
-    # elif args.acquisition_mode == 'duration':
-    #     if trigger_with_arduino:
-    #         pass
-    #     else:
-    #         acquisition_time = time.perf_counter()
-    #         while time.perf_counter() - acquisition_time < args.experiment_duration:
-    #             cam1.get_n_frames(1, save_vid=False)
-
     # get all active child processes
-    active = mp.active_children()
-    print(f'Active Children: {len(active)}')
-    # terminate all active children
-    for child in active:
-        child.terminate()
-    # block until all children have closed
-    for child in active:
-        child.join()
-        child.close()
+    # active = mp.active_children()
+    # logger.info(f'Active Children: {len(active)}')
+    # # terminate all active children
+    # for child in active:
+    #     child.terminate()
+    # # block until all children have closed
+    # for child in active:
+    #     child.join()
+    #     child.close()
+        
 if __name__=='__main__':
     # set_start_method("spawn")
     main()

@@ -12,7 +12,7 @@ def threaded(fn):
     return wrapper
 
 class Predictor():
-    def __init__(self, model_path='', save_dir=None):
+    def __init__(self, logger, model_path='', save_dir=None):
         self.n_frame = 0
         self.prev_n_frame = 0
         self.frame = None
@@ -20,10 +20,12 @@ class Predictor():
         self.save_dir = save_dir
         self.model_path = model_path
         self.stopped = False
+        # self.logger = logger
         # self.get_random_prediction()
         self.pred_result = np.random.randint(50, 300, size=(3, 5, 2))
 
         if self.model_path == '':
+            # self.logger.info('model_path is not provided, drawing random predictions')
             print('model_path is not provided, drawing random predictions')
         else:
             self.load_model()
