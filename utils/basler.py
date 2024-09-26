@@ -315,7 +315,7 @@ class Basler():
                         # self.logger.info(f'Frame: {self.nframes} / {n_frames}')
                         
                     frame = self.convert_image(image_result)
-                    self.last_frame = frame
+                    self.last_frame = frame.copy()
                     
                     if self.save:
                         self.frame_write_queue.put_nowait(self.last_frame)
