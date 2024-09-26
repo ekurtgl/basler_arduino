@@ -208,7 +208,8 @@ void start_frame_trigger(void) {
   // Timer1.pwm(LedPin, (dutyCycle) * 1023);
 
   // setupBlink_Timer2(int(fps), 50);
-  setupBlink_Timer2(int(fps) * 100, 100 / 3);  // multiply fps by 100 when using timer2, duty cycle 30-33%
+  setupBlink_Timer2(int(fps) * 100, 100 / 3);  // multiply fps by 100 when using timer2, for 60 fps: duty cycle 30-33%
+  // setupBlink_Timer2(int(fps) * 100, 100 / 3 * 2);  // multiply fps by 100 when using timer2, for 120 fps: duty cycle 66%
   // setupBlink_Timer2(2, 50);
   // setupPWM_Timer2(int(fps));
 

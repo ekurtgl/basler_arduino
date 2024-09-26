@@ -56,39 +56,42 @@ def initialize_and_loop(tuple_list_item, logger, report_period=5): #config, camn
         # print(recv)
         # print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
         # time.sleep(0.5)
-        device.start()
+        # device.start()
         # time.sleep(0.5)
 
-        try:
-            future = device.get_n_frames_arduino(args.n_total_frames, arduino=arduino.arduino)
-            # while device.frame_timer is None:
-            #     continue
-            grab_start_t = time.perf_counter()
-            # future.result()
-        except KeyboardInterrupt:
-            logger.info("Aborted in main")
-            # arduino.arduino.write("Q\n".encode()) #b'Q\r\n')
-            # print("Closed Arduino")
-        finally:
-            #if cam['master'] in [True, 'True']:
+    try:
+        future = device.get_n_frames(args.n_total_frames)
+        # future = device.get_n_frames_arduino(args.n_total_frames)
+        # while device.frame_timer is None:
+        #     continue
+        grab_start_t = time.perf_counter()
+        # future.result()
+    except KeyboardInterrupt:
+        logger.info("Aborted in main")
+        # arduino.arduino.write("Q\n".encode()) #b'Q\r\n')
+        # print("Closed Arduino")
+    finally:
+        #if cam['master'] in [True, 'True']:
+
+        if trigger_with_arduino:
             logger.info("Closing Arduino")
             arduino.arduino.write("Q\n".encode()) #b'Q\r\n')
             time.sleep(0.2)
             arduino.arduino.write("V\n".encode()) #b'Q\r\n')
             time.sleep(0.2)
-            logger.info("Exited.")
+        logger.info("Exited.")
 
-    else:
-        try:
-            future = device.get_n_frames(args.n_total_frames)
-            # while device.frame_timer is None:
-            #     continue
-            grab_start_t = time.perf_counter()
-            # future.result()
-        except KeyboardInterrupt:
-            logger.info("Aborted in main")
-        finally:
-            logger.info("Exiting.")
+    # else:
+    #     try:
+    #         future = device.get_n_frames(args.n_total_frames)
+    #         # while device.frame_timer is None:
+    #         #     continue
+    #         grab_start_t = time.perf_counter()
+    #         # future.result()
+    #     except KeyboardInterrupt:
+    #         logger.info("Aborted in main")
+    #     finally:
+    #         logger.info("Exiting.")
 
     return ("done")
 

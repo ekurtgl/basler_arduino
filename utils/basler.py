@@ -246,42 +246,155 @@ class Basler():
             self.set_value(nodemap, 'LineSource', line_source)
             self.set_value(nodemap, 'LineInverter', True)
 
-    def initialize_preview(self):
-        # plt.ion()
-        self.latest_frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
-        # ax1 = plt.subplot(1,1,1)
-        # self.fig = ax1.imshow(empty_image)
-        cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
-        # self.font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.imshow(self.name, self.latest_frame)
-        self.preview_queue = LifoQueue(maxsize=10)
-        # self.preview_thread()   
+    # def initialize_preview(self):
+    #     # plt.ion()
+    #     self.latest_frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
+    #     # ax1 = plt.subplot(1,1,1)
+    #     # self.fig = ax1.imshow(empty_image)
+    #     cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
+    #     # self.font = cv2.FONT_HERSHEY_SIMPLEX
+    #     cv2.imshow(self.name, self.latest_frame)
+    #     self.preview_queue = LifoQueue(maxsize=10)
+    #     # self.preview_thread()   
         
-    def preview_worker(self):
-        while self.preview:
-            print('here ')
-            cv2.imshow(self.name, self.latest_frame)
-            cv2.putText(self.latest_frame, "{}. Frame".format(self.n),
-                (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255))
-            k = cv2.waitKey(1)
-            yield k
+    # def preview_worker(self):
+    #     while self.preview:
+    #         print('here ')
+    #         cv2.imshow(self.name, self.latest_frame)
+    #         cv2.putText(self.latest_frame, "{}. Frame".format(self.n),
+    #             (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255))
+    #         k = cv2.waitKey(1)
+    #         yield k
             
-    def update_preview(self):
-        # frame = np.expand_dims(self.frames[-1], -1)
-        # self.fig.set_data(frame)
-        # plt.pause(0.1)
-        # string = '%s:%07d' %(self.camera.GetDeviceInfo().GetModelName(), count)
-        # cv2.putText(frame, string,(10,out_height-20), self.font, 0.5,(0,0,255),2,cv2.LINE_AA)
-        cv2.imshow(self.name, self.latest_frame)
-        k = cv2.waitKey(1)
-        return k
+    # def update_preview(self):
+    #     # frame = np.expand_dims(self.frames[-1], -1)
+    #     # self.fig.set_data(frame)
+    #     # plt.pause(0.1)
+    #     # string = '%s:%07d' %(self.camera.GetDeviceInfo().GetModelName(), count)
+    #     # cv2.putText(frame, string,(10,out_height-20), self.font, 0.5,(0,0,255),2,cv2.LINE_AA)
+    #     cv2.imshow(self.name, self.latest_frame)
+    #     k = cv2.waitKey(1)
+    #     return k
     
     def compute_timestamp_offset(self):
         self.camera.TimestampLatch.Execute()
         self.timestamp_offset = time.perf_counter() - self.camera.TimestampLatchValue.GetValue()*1e-9 - self.start_t
 
+
+    def get_n_frames(self, n_frames, timeout_time=2000, report_period=10):
+        if str_to_bool(self.args.trigger_with_arduino):
+            self.camera.StartGrabbing(pylon.GrabStrategy_OneByOne)
+        else:
+            self.camera.StartGrabbingMax(n_frames)
+
+        # print(f"Started cam {self.name} acquisition")
+        self.logger.info(f"Started cam {self.name} acquisition")
+        self.start_timer = time.perf_counter()
+
+        self.logger.info("Looping - %s" % self.name)
+        # print("Looping - %s" % self.name)
+        
+        try:
+            if self.camera.GetGrabResultWaitObject().Wait(0):
+                # print("grab results waiting")
+                self.logger.info("grab results waiting")
+
+            self.logger.info('Checking for results')
+            # print('Checking for results')
+            last_report = 0
+
+            while not self.camera.GetGrabResultWaitObject().Wait(0):
+                elapsed_pre = time.perf_counter() - self.start_timer #exp_start_tim     
+                if round(elapsed_pre) % 5 == 0 and round(elapsed_pre) != last_report:
+                    # print("...waiting grabbing", round(elapsed_pre))
+                    self.logger.info("...waiting grabbing", round(elapsed_pre))
+                    
+                last_report = round(elapsed_pre)
+
+            metadata = {}
+
+            while self.camera.IsGrabbing():
+
+                if self.nframes == 0:
+                    elapsed_time = 0
+                    self.frame_timer = time.perf_counter()
+
+                if self.nframes % round(report_period * self.cam['options']['AcquisitionFrameRate']) == 0:
+                    # print("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
+                    self.logger.info("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
+
+                image_result = self.camera.RetrieveResult(timeout_time, pylon.TimeoutHandling_Return) #, pylon.TimeoutHandling_ThrowException)
+                #if (image_result.GetNumberOfSkippedImages()):
+                #    print("Skipped ", image_result.GetNumberOfSkippedImages(), " image.")
+                if image_result is None and int(elapsed_time) % 5 == 0: #not image_result.GrabSucceeded():
+                    self.logger.info("... waiting frame")
+                    # print("... waiting")
+                    continue
+
+                if image_result.GrabSucceeded():
+                    if self.nframes == 0:
+                        init_time_stamp = image_result.TimeStamp
+                    last_time_stamp = image_result.TimeStamp
+
+                    self.nframes += 1
+                    # if self.nframes % self.cam['options']['AcquisitionFrameRate'] == 0:
+                        # print(f'Frame: {self.nframes} / {n_frames}')
+                        # self.logger.info(f'Frame: {self.nframes} / {n_frames}')
+                        
+                    frame = self.convert_image(image_result)
+                    if self.save:
+                        self.writer_obj.write(frame) #frame) # send frame to save_queue
+
+                    if self.predict:
+                        self.predictor.frame = frame
+                        self.predictor.n_frame = self.nframes
+                        self.predictor.get_random_prediction()
+
+                    if self.preview:
+                        self.vid_show.frame = frame
+                        self.vid_show.n_frame = self.nframes
+                        if self.preview_predict:
+                            self.vid_show.pred_result = self.predictor.pred_result
+
+                    metadata[image_result.ID] = {}
+                    metadata[image_result.ID]['time_stamp'] = datetime.now().strftime("%Y%m%d_%H_%M_%S.%f")  # microsec precision
+                    metadata[image_result.ID]['fps'] = self.camera.ResultingFrameRate.Value
+                    # metadata[grabResult.ID]['frame_ID'] = grabResult.ID
+                    metadata[image_result.ID]['frame_number'] = image_result.ImageNumber
+                    metadata[image_result.ID]['time_stamp_w_offset'] = image_result.GetTimeStamp()*1e-9 + self.timestamp_offset
+                    metadata[image_result.ID]['pylon_time_stamp'] = image_result.TimeStamp                    
+
+                    image_result.Release()
+
+                    elapsed_time = time.perf_counter() - self.frame_timer
+                    if self.nframes > n_frames:
+                        if self.preview:
+                            self.vid_show.stop()
+                        self.logger.info("Breaking...")
+                        # print("Breaking...")
+                        break 
+
+        except KeyboardInterrupt:
+            self.logger.info("ABORT loop")
+            # print("ABORT loop")
+            should_continue=False
+            
+        finally:
+            self.close()
+            if self.preview:
+                self.vid_show.stop()
+            if self.predict:
+                self.predictor.stop()
+            if self.save:
+                self.save_vid_metadata(metadata)
+            self.logger.info(f'Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            self.logger.info(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+            # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+            
+
     # @threaded  # threaded should be disabled when preview is set
-    def get_n_frames(self, n_frames, save_vid=True, timeout=5000):
+    def get_n_frames2(self, n_frames, save_vid=True, timeout=5000):
         # if self.preview:
         #     # self.initialize_preview()
         #     self.vid_show = VideoShow(self.name)
@@ -301,7 +414,7 @@ class Basler():
         # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
         # when n_frames images have been retrieved.
         # self.frames = []
-        self.n = 0
+        self.nframes = 0
         metadata = {}
         start_time = time.perf_counter()
 
@@ -319,7 +432,7 @@ class Basler():
                     metadata[grabResult.ID]['time_stamp'] = datetime.now().strftime("%Y%m%d_%H_%M_%S.%f")  # microsec precision
                     # self.frames.append(image)
 
-                    if self.n == 0:
+                    if self.nframes == 0:
                         self.frame_timer = time.perf_counter()
 
                     if self.predict:
@@ -354,7 +467,7 @@ class Basler():
                     metadata[grabResult.ID]['time_stamp_w_offset'] = grabResult.GetTimeStamp()*1e-9 + self.timestamp_offset
                     metadata[grabResult.ID]['pylon_time_stamp'] = grabResult.TimeStamp
                     last_time_stamp = grabResult.TimeStamp
-                    if self.n == 0:
+                    if self.nframes == 0:
                         init_time_stamp = grabResult.TimeStamp
                     # pprint.pprint(metadata)
                     if save_vid:
@@ -382,76 +495,13 @@ class Basler():
                 self.predictor.stop()
             if self.save:
                 self.save_vid_metadata(metadata)
-            self.logger.info(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - start_time} sec.')
+            self.logger.info(f'Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - start_time} sec.')
             self.logger.info(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - start_time} sec.')
             # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
-
-        if self.preview:
-            self.vid_show.stop()
-            cv2.destroyAllWindows()
-
-        if save_vid:                 
-            self.save_vid_metadata(metadata)
-        
-        # return self.frames
-    
-#     def initialize_preview2(self):
-#         # cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
-#         # self.logger.info("New window: %s" % self.name)
-#         print("New window: %s" % self.name)
-#         cv2.namedWindow(self.name, cv2.WINDOW_NORMAL) #AUTOSIZE)
-#         self.font = cv2.FONT_HERSHEY_SIMPLEX
-#         self.latest_frame = None
-#         self.preview_queue = LifoQueue(maxsize=5) #, block=False)
-#         #self.preview_thread = mp.Process(target=self.preview_worker, args=(self.preview_queue,))
-#         self.preview_thread = Thread(target=self.preview_worker, args=(self.preview_queue,))
-#         self.preview_thread.daemon = True
-#         self.preview_thread.start()
-
-#     def preview_worker(self, queue):
-#         should_continue = True
-#         while should_continue:
-#             item = queue.get()
-#             # print(item)
-#             if item is None:
-#                 if self.verbose:
-#                     print('Preview stop signal received')
-#                 should_continue=False
-#                 break
-#                 # break
-#             # left, right, count = item
-#             frame, count = item
-#             # frame should be processed, so a single RGB image
-#             # out = np.vstack((left,right))
-#             # h, w, c = frame.shape
-#             h, w = frame.shape
-# #            if self.save:
-# #                frame = cv2.resize(frame, (w//2,h//2),cv2.INTER_NEAREST)
-# #                out_height = h//2
-# #            else:
-# #                frame = cv2.resize(frame, (w,h),cv2.INTER_NEAREST)
-# #                out_height = h//3*2
-# #            # frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-#             out_height=h                    
-#             # string = '%.4f' %(time_acq*1000)
-#             string = '%s:%07d' %(self.name, count)
-#             cv2.putText(frame, string, (10,out_height-20), self.font, 0.5,(0,0,255), 2, cv2.LINE_AA)
-#             self.latest_frame = frame
-#             queue.task_done()
-
-    def start(self):
-        self.camera.StartGrabbing(pylon.GrabStrategy_OneByOne)
-        # print(f"Started cam {self.name} acquisition")
-        self.logger.info(f"Started cam {self.name} acquisition")
-        # if self.preview:
-        #     self.initialize_preview()
-        self.started= True
-        # self.processing_queue = LifoQueue(maxsize=256)
-        self.start_timer = time.perf_counter()
-
+      
     # @threaded
-    def get_n_frames_arduino(self, n_frames, arduino=None, timeout_time=5000, report_period=10):
+    def get_n_frames_arduino(self, n_frames, timeout_time=5000, report_period=10):
 
         self.logger.info("Looping - %s" % self.name)
         # print("Looping - %s" % self.name)
@@ -504,15 +554,14 @@ class Basler():
                     last_time_stamp = image_result.TimeStamp
 
                     self.nframes += 1
-                    if self.nframes % self.cam['options']['AcquisitionFrameRate'] == 0:
+                    # if self.nframes % self.cam['options']['AcquisitionFrameRate'] == 0:
                         # print(f'Frame: {self.nframes} / {n_frames}')
-                        self.logger.info(f'Frame: {self.nframes} / {n_frames}')
+                        # self.logger.info(f'Frame: {self.nframes} / {n_frames}')
                         
                     frame = self.convert_image(image_result)
                     if self.save:
                         self.writer_obj.write(frame) #frame) # send frame to save_queue
 
-                    # if self.nframes % 10 == 0:
                     if self.predict:
                         self.predictor.frame = frame
                         self.predictor.n_frame = self.nframes
@@ -530,66 +579,17 @@ class Basler():
                     # metadata[grabResult.ID]['frame_ID'] = grabResult.ID
                     metadata[image_result.ID]['frame_number'] = image_result.ImageNumber
                     metadata[image_result.ID]['time_stamp_w_offset'] = image_result.GetTimeStamp()*1e-9 + self.timestamp_offset
-                    metadata[image_result.ID]['pylon_time_stamp'] = image_result.TimeStamp
-
-                    # sestime = time.perf_counter() - self.start_t
-                    # cputime = time.time()
-                    # frameid =  image_result.ID #GetFrameID()
-                    # framecount = self.nframes
-                    # timestamp is nanoseconds from last time camera was powered off
-                    # timestamp = image_result.GetTimeStamp()*1e-9 + self.timestamp_offset 
-                    # print('standard process time: %.6f' %(time.perf_counter() - start_t))
-                    # def write_metadata(self, framecount, timestamp, arrival_time, sestime, cputime):
-                    # metadata = (framecount, timestamp, sestime, cputime)
-                    
+                    metadata[image_result.ID]['pylon_time_stamp'] = image_result.TimeStamp                    
 
                     image_result.Release()
 
-                    # only output every 10th frame for speed
-                    # might be unnecessary
-                    # if self.preview:# and framecount % 5 ==0:
-                    #     self.preview_queue.put_nowait((frame, framecount))
-                    #     #self.preview_worker((frame, framecount))
-                    #     if self.latest_frame is not None:
-                    #         cv2.imshow(self.name, self.latest_frame)
-
-                    # frames = None
-                    # Break out of the while loop if ESC registered
-                    elapsed_time = time.perf_counter() - self.frame_timer #exp_start_time
-                    # key = cv2.waitKey(1)
-                    # sync_state = self.camera.LineStatus.GetValue() #cameras[cameraContextValue].LineStatus.GetValue()
-                    #print(sync_state)
-                    #if key == 27 or sync_state is False or (elapsed_time>duration_sec): # ESC
-
-                    # movtime = time.perf_counter() - self.frame_timer
-
-                    # if key == 27 or (elapsed_time>self.duration_sec): # ESC
-                    # if key == 27 or (self.nframes > n_frames): # ESC
-                    if self.nframes > n_frames: # ESC
-                    #     #print("Sync:", sync_state)
-                    #     #writerA.close()
-                    #     #writerB.close()
+                    elapsed_time = time.perf_counter() - self.frame_timer
+                    if self.nframes > n_frames:
                         if self.preview:
                             self.vid_show.stop()
-                        # print("elapsed:", sestime)
-                        # print("movie dur:", movtime)
-                        # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
-                        # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
-                        # self.logger.info("Breaking...")
-                        print("Breaking...")
+                        self.logger.info("Breaking...")
+                        # print("Breaking...")
                         break 
-                    # time.sleep(1)
-
-                    # if arduino.in_waiting > 0:
-                    #     data = arduino.readline()
-                    #     if data.rstrip().decode('utf-8')=='Q':
-                    #         # print("elapsed:", sestime)
-                    #         # print("movie dur:", movtime)
-                    #         print("breaking")
-                    #         break
-                
-            if self.save:                 
-                self.save_vid_metadata(metadata)
 
         except KeyboardInterrupt:
             self.logger.info("ABORT loop")
@@ -604,7 +604,7 @@ class Basler():
                 self.predictor.stop()
             if self.save:
                 self.save_vid_metadata(metadata)
-            self.logger.info(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            self.logger.info(f'Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
             self.logger.info(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
             # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')

@@ -86,6 +86,9 @@ class Stimulator():
         # print(f'pulse_dutyCycles: {self.pulse_dutyCycles}\n')
     
     def send_stim_config(self):
+        if self.arduino is None:
+            raise ValueError('Arduino is not set as the trigger source.')
+        
         stim_profiles = [f'{self.stimulation_turnOn_times_global[i]}-{self.stimulation_durations[i]}-' + 
                          f'{self.pulse_intervals[i]}-{self.pulse_dutyCycles[i]}' for i in range(len(self.stimulation_turnOn_times_global))]
         cmd = 'D,' + ','.join(stim_profiles) + '\n'

@@ -30,8 +30,17 @@ class Arduino():
     @threaded
     def listen(self):
         while self.continuous_listen:
-            recv = self.arduino.readline()
-            self.logger.info("Received msg from arduino: {}".format(recv.rstrip().decode('utf-8')))
+            recv = self.arduino.readline().rstrip().decode('utf-8')
+            # if recv[-1] == '\n':
+            #     recv = recv[:-1]
+            #     if recv == '':
+            #         continue
+            # if recv[-1] == '\n':
+            #     recv = recv[:-1]
+            #     if recv == '':
+            #         continue
+                
+            self.logger.info("Received msg from arduino: {}".format(recv))
         
 
     
