@@ -15,9 +15,10 @@ from pypylon import pylon
 from pypylon import genicam
 
 import sys
+import time
 
 # Number of images to be grabbed.
-countOfImagesToGrab = 100
+countOfImagesToGrab = 150
 
 # The exit code of the sample application.
 exitCode = 0
@@ -46,21 +47,29 @@ try:
 
     # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
     # when c_countOfImagesToGrab images have been retrieved.
+    n = 0
     while camera.IsGrabbing():
+        if n == 0:
+            start_t = time.perf_counter()
         # Wait for an image and then retrieve it. A timeout of 5000 ms is used.
         grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
 
         # Image grabbed successfully?
         if grabResult.GrabSucceeded():
             # Access the image data.
+            
+            print(f"\nFrame: {n+1}")
             print("SizeX: ", grabResult.Width)
             print("SizeY: ", grabResult.Height)
+            print(f'FPS: {camera.ResultingFrameRate.Value}')
             img = grabResult.Array
             print("Gray value of first pixel: ", img[0, 0])
         else:
             print("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
         grabResult.Release()
+        n += 1
     camera.Close()
+    print(f'elapsed time: {time.perf_counter() - start_t}')
 
 except genicam.GenericException as e:
     # Error handling.

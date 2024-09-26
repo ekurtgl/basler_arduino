@@ -97,6 +97,9 @@ class Stimulator():
         # print("***Sent stimulation config cmd to Arduino: {} ***".format(cmd))
     
     def send_stim_trigger(self):
+        if self.arduino is None:
+            raise ValueError('Arduino is not set as the trigger source.')
+        
         cmd = 'T\n'
         self.arduino.arduino.write(cmd.encode())
         self.logger.info("***Sent stimulation trigger cmd to Arduino: {} ***".format(cmd))

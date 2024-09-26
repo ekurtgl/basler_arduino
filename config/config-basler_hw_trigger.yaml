@@ -25,7 +25,7 @@ cams:
       # AcquisitionMode: 'Continuous' # can capture one frame or multiple frames as well
       ExposureAuto: 'Off' # manually set exposure
       ExposureMode: 'Timed'
-      ExposureTime: 4000.0 #68290.0 #1000.0 # in microseconds, so 1000 = 1ms
+      ExposureTime: 4000.0 # 4000.0 #68290.0 #1000.0 # in microseconds, so 1000 = 1ms
       # if can't change binninghorizontal, change binvertical 
       # binningvertical
       BinningVerticalMode: 'Average'
@@ -41,7 +41,7 @@ cams:
       PixelFormat: Mono8
       # AcquisitionFrameRateEnable: True # False if external HW trigger per frame
       AcquisitionFrameRateEnable: False # False if external HW trigger per frame
-      AcquisitionFrameRate: 60.0
+      AcquisitionFrameRate: 120.0
       GainAuto: 'Off'
       Gain: 0.0
       Gamma: 0.5

@@ -4,7 +4,7 @@
 const byte rxPin = 2;
 const byte txPin = 3;
 SoftwareSerial mySerial(rxPin, txPin, 1);
-const int LedPin = 11; // 9 for timer1, 11 for timer2;
+const int LedPin = 3; // 9 for timer1, 11 for timer2;
 int onTime, offTime; // Variables to hold on and off times
 volatile int counter = 0; // Counter to track ISR calls
 volatile bool ledState = false; // Current state of the LED
@@ -44,6 +44,7 @@ void setup() {
   digitalWrite(stimulationPin, LOW);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(LedPin, OUTPUT);
+  setupTimer2PWM();
   
 }
 
@@ -208,14 +209,68 @@ void start_frame_trigger(void) {
   // Timer1.pwm(LedPin, (dutyCycle) * 1023);
 
   // setupBlink_Timer2(int(fps), 50);
-  setupBlink_Timer2(int(fps) * 100, 100 / 3);  // multiply fps by 100 when using timer2, for 60 fps: duty cycle 30-33%
+  // setupBlink_Timer2(int(fps) * 100, 100 / 3);  // multiply fps by 100 when using timer2, for 60 fps: duty cycle 30-33%
   // setupBlink_Timer2(int(fps) * 100, 100 / 3 * 2);  // multiply fps by 100 when using timer2, for 120 fps: duty cycle 66%
+  setTimer2PWM(float(fps), 50.0);
   // setupBlink_Timer2(2, 50);
   // setupPWM_Timer2(int(fps));
 
   pinStatus = 1;
   Serial.println("Frame trigger started.");
   // }
+}
+
+void setupTimer2PWM() {
+  // Set Timer2 PWM pins as outputs
+  // pinMode(TIMER2_A_PIN, OUTPUT);
+  // pinMode(TIMER2_B_PIN, OUTPUT);
+
+  // Configure Timer2
+  TCCR2A = _BV(COM2A1) | _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
+  TCCR2B = _BV(CS22);  // Prescaler 64
+}
+
+void setTimer2PWM(float fps, float dutyCycle) {
+  // Constrain inputs
+  fps = constrain(fps, 10, 120);
+  dutyCycle = constrain(dutyCycle, 0, 100);
+
+  // Calculate prescaler and OCR2A value
+  uint8_t prescaler;
+  uint32_t ocr2a;
+
+  // 16MHz / (256 * fps) = 62500 / fps
+  ocr2a = 62500 / fps;
+
+  if (ocr2a <= 256) {
+    prescaler = _BV(CS22);  // Prescaler 64
+    ocr2a = ocr2a - 1;
+  } else if (ocr2a <= 1024) {
+    prescaler = _BV(CS22) | _BV(CS21);  // Prescaler 256
+    ocr2a = (ocr2a / 4) - 1;
+  } else {
+    prescaler = _BV(CS22) | _BV(CS21) | _BV(CS20);  // Prescaler 1024
+    ocr2a = (ocr2a / 16) - 1;
+  }
+
+  // Set prescaler
+  TCCR2B = (TCCR2B & 0b11111000) | prescaler;
+
+  // Set PWM frequency
+  OCR2A = ocr2a;
+
+  // Set duty cycle
+  uint8_t pwmValue = (dutyCycle / 100.0) * (OCR2A + 1) - 1;
+  OCR2B = pwmValue;
+
+  Serial.print("FPS: ");
+  Serial.print(fps);
+  Serial.print(", Duty Cycle: ");
+  Serial.print(dutyCycle);
+  Serial.print("%, OCR2A: ");
+  Serial.print(OCR2A);
+  Serial.print(", OCR2B: ");
+  Serial.println(OCR2B);
 }
 
 void setupBlink_Timer2(int FPS, float dutyCycle) {

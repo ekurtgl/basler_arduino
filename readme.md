@@ -11,11 +11,11 @@
 
 Optional Steps for hardware trigger:
 
-2. Connect Pin 11 of Arduino with Pin 1 (Brown cable) of the Basler, and GND pin of Arduino with Pin 6 (White cable) of the Basler.
+2. Connect Pin 3 of Arduino with Pin 1 (Brown cable) of the Basler, and GND pin of Arduino with Pin 6 (White cable) of the Basler.
 
-3. Connect Pin 10 of Arduino with the stimulation's input ((+) for the external LED) line.
+3. Connect Pin 10 of Arduino with the stimulation's input ((+) for the external LED) line, and GND pin of Arduino with LED's (-) line.
 
-4. Connect Arduino to the computer.
+4. Connect Arduino to the computer via USB.
 
 ### Set Arduino access rights
 
@@ -34,7 +34,8 @@ Restart the computer for the access rights to take effect.
 
 ### Configs
 
-At 60 FPS, 1248x1248, arduinos duty cycle should be set to 30-33%.
+`--n_total_frames` should be equal to the product of total duration of each blocks in `stimulation_config.json` and the `AcquisitionFrameRate`.
+
 ## Hardware Troubleshoot
 
 For GPIO coax cable color codes, refer [here](https://docs.baslerweb.com/basler-io-cable-hrs-6p-open-p?_gl=1*6p8gh3*_gcl_au*MTQyMTg2MzkwOC4xNzI2MDg5ODQ4).
