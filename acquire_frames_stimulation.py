@@ -24,7 +24,7 @@ def threaded(fn):
 grab_start_t = None
 
 @threaded
-def initialize_and_loop(tuple_list_item, logger, report_period=5): #config, camname, cam, args, experiment, start_t): #, arduino):
+def initialize_and_loop(tuple_list_item, logger, report_period=10): #config, camname, cam, args, experiment, start_t): #, arduino):
     global grab_start_t
     config, camname, cam, args, experiment, start_t, trigger_with_arduino, arduino = tuple_list_item
 
@@ -52,15 +52,9 @@ def initialize_and_loop(tuple_list_item, logger, report_period=5): #config, camn
         arduino.arduino.write(cmd.encode())
         logger.info("***Sent msg to Arduino: {} ***".format(cmd))
         time.sleep(0.5)
-        # recv = arduino.arduino.readline()
-        # print(recv)
-        # print("Received FPS {} Hz.".format(recv.rstrip().decode('utf-8')))
-        # time.sleep(0.5)
-        # device.start()
-        # time.sleep(0.5)
 
     try:
-        future = device.get_n_frames(args.n_total_frames)
+        future = device.get_n_frames(args.n_total_frames, report_period=report_period)
         # future = device.get_n_frames_arduino(args.n_total_frames)
         # while device.frame_timer is None:
         #     continue
