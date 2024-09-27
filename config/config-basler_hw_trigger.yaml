@@ -32,8 +32,8 @@ cams:
       BinningHorizontalMode: 'Average'
       BinningVertical: 1
       BinningHorizontal: 1
-      Width: 1248 #680 #1024 # max 1280 if binning=1, else 640
-      Height: 1248 #512 #768 # max 1024 if binning=1, else 512
+      Width: 1280 #680 #1024 # max 1280 if binning=1, else 640
+      Height: 1280 #512 #768 # max 1024 if binning=1, else 512
       # OffsetX: 0 # left value of roi
       # OffsetY: 0 # top value of roi
       CenterX: True
