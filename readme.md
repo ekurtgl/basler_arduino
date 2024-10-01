@@ -1,6 +1,6 @@
 # Project Description
 
-This program live streams the frames of Basler acA2040-120um camera with additional options such as configuring the camera settings, exporting frames as a video, saving metadata of each frame, making inference from a pretrained ML model, preview of the camera stream and model predictions.
+This program live streams the frames of Basler acA2040-120um camera with additional options such as configuring the camera settings, exporting frames as a video, saving metadata of each frame, triggering camera from SW (pypylon) or HW (Arduino), making inference from a pretrained ML model, preview of the camera stream and model predictions.
 
 The program utilizes threading capabilities of Python to run tasks concurrently without blocking each other.
 
