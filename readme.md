@@ -1,3 +1,9 @@
+# Project Description
+
+This program live streams the frames of Basler acA2040-120um camera with additional options such as configuring the camera settings, exporting frames as a video, saving metadata of each frame, making inference from a pretrained ML model, preview of the camera stream and model predictions.
+
+The program utilizes threading capabilities of Python to run tasks concurrently without blocking each other.
+
 # Installation 
 
 ### Software
@@ -31,12 +37,51 @@ KERNEL=="ttyACM0", MODE="0666"
 ```
 Restart the computer for the access rights to take effect.
 
+### Requirements
 
-### Configs
+You can create a new environment before installing the necessary dependencies.
 
-`--n_total_frames` should be equal to the product of total duration of each blocks in `stimulation_config.json` and the `AcquisitionFrameRate`.
+`pip install -r requirements.txt`
 
-## Hardware Troubleshoot
+# Configs
+
+### Acquisition Mode
+
+`--acquisition_mode` controls the acquisition mode, and is only implemented for `"frames"` for now.
+
+### SW vs. HW Trigger
+
+The cameras can be trigger via both SW or HW (Arduino). The relevant `--config` file should be provided for either case. For the HW trigger, `--trigger_with_arduino` should be set to one of the followings `['true', '1', 't', 'y', 'yes']`
+
+`--n_total_frames` should be equal to the product of total duration of each blocks in [`stimulation_config.json`](config/stimulation_config.json) and the `AcquisitionFrameRate` parameter in the [camera config file](config/config-basler_hw_trigger.yaml).
+
+
+### Stimulation
+
+Stimulation should always be used in the HW trigger mode.
+
+If `--stimulation_path` is `""`, no stimulation will be triggered.
+
+`stimulation_config.json` contains the stimulation profiles with the following structure:
+
+```json
+"<block number>": {"duration_sec": "8", // duration of the block in sec
+                    "stimulation": "1", // bool flag for whether stimulation exists
+                    "stimulation_turnOn_times_sec": ["2", "4"], // list of local (within block) stimulation start times in sec
+                    "stimulation_durations_ms": ["1000", "2000"], // list of stimulation durations in ms
+                    "pulse_ontime_ms": ["50", "250"], // list of pulse on times in ms
+                    "pulse_offtime_ms": ["50", "250"]}, // list of pulse off times in ms
+```
+
+# Running
+
+You can run the main program `acquire_frames_stimulation.py` with the default arguments given in [`.vscode/launch.json`](.vscode/launch.json)
+
+### Preview
+
+You can toggle the prediction preview by pressing the `"P"` button on the keyboard during runtime.
+
+# Hardware Troubleshoot
 
 For GPIO coax cable color codes, refer [here](https://docs.baslerweb.com/basler-io-cable-hrs-6p-open-p?_gl=1*6p8gh3*_gcl_au*MTQyMTg2MzkwOC4xNzI2MDg5ODQ4).
 
