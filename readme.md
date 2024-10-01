@@ -44,7 +44,7 @@ Find Basler GPIO pins [here](https://docs.baslerweb.com/aca2040-120um)
 
 ### Arduino
 
-If you the Arduino IDE stalls with the following notification:
+If the Arduino IDE stalls with the following notification:
 
 `Downloading index library_index.tar.bz2`
 
