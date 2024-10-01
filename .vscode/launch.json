@@ -9,23 +9,21 @@
             "name": "acquire basler arduino",
             "type": "debugpy",
             "request": "launch",
-            // "program": "./acquire_frames.py",
             "program": "./acquire_frames_stimulation.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "config/config-basler_hw_trigger.yaml",
+                "--config", "config/config-basler_sw_trigger.yaml",
                 "--acquisition_mode", "frames",
                 "--n_total_frames", "1680",
-                "--trigger_with_arduino", "1",
+                "--trigger_with_arduino", "0",
                 "--save", "1",
                 "--videowrite_fps", "30",
                 "--preview", "1", // disable @threaded for get_n_frames method in basler.py when it is set
                 "--predict", "1",
                 "--preview_prediction", "1",
                 "--model_path", "",
-                "--stimulation_path", "config/stimulation_config.json"
+                "--stimulation_path", ""
             ],
-            "cwd": "/mnt/aperto/emre/Technical/FLY/cam_realtime",
             "justMyCode": true,
         }
     ]
