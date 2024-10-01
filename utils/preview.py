@@ -16,12 +16,14 @@ class VideoShow:
     Class that continuously shows a frame using a dedicated thread.
     """
 
-    def __init__(self, name, show_pred=False, frame=None):
+    def __init__(self, name, show_pred=False, frame=None, preview_button='q', pred_preview_button='p'):
         self.frame = frame
         self.name = name
         self.n_frame = 0
         self.stopped = False
         self.show_pred = show_pred
+        self.pred_preview_button = pred_preview_button
+        self.preview_button = preview_button
         self.pred_result = None
         self.circle_radius = 5
         self.thickness = -1  # fill the circle
@@ -42,10 +44,10 @@ class VideoShow:
     
     @threaded
     def on_key_event(self, event):
-        if event.char == 'p':  # Check if the pressed key is 'p'
+        if event.char == self.pred_preview_button:  # Check if the pressed key is 'p'
             print("You toggled keypoint preview!")
             self.show_pred = not self.show_pred
-        if event.char == 'q':  # Check if the pressed key is 'p'
+        if event.char == self.preview_button:  # Check if the pressed key is 'p'
             print("You closed the preview!")
             self.stopped = True
             

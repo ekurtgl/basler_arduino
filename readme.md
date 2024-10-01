@@ -3,7 +3,7 @@
 ### Software
 
 1. Download and install [Basler Pylon SDK](https://www2.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware).
-2. **[Optional for hardware trigger with Arduino]** Upload `Arduino_trigger.ino` file to the Arduino.
+2. **[Optional for hardware trigger with Arduino]** Upload `utils/arduino_pwm_led/arduino_pwm_led.ino` file to the Arduino.
 
 ### Hardware
 
