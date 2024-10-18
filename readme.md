@@ -60,6 +60,10 @@ If some packages do not get installed, run this separately:
 
 # Configs
 
+### Data Save Path
+
+Change `savedir` under the [configuration file](config/config-basler_sw_trigger.yaml):
+
 ### Acquisition Mode
 
 `--acquisition_mode` controls the acquisition mode, and is only implemented for `"frames"` for now.
