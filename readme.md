@@ -41,11 +41,22 @@ Restart the computer for the access rights to take effect.
 
 You can create a new environment before installing the necessary dependencies.
 
-`pip install -r requirements.txt`
+`conda create -n <your_env_name> python=3.9`
+
+Intall the dependencies via:
+
+```bash
+cd basler_arduino-main
+pip install -r requirements.txt
+```
 
 OR 
 
 `conda env create -f environment.yml -n <your_env_name>`
+
+
+If some packages do not get installed, run this separately:
+`pip install pyyaml pyserial pypylon pynput tqdm opencv-python`
 
 # Configs
 
