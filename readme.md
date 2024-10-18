@@ -43,6 +43,10 @@ You can create a new environment before installing the necessary dependencies.
 
 `pip install -r requirements.txt`
 
+OR 
+
+`conda env create -f environment.yml -n <your_env_name>`
+
 # Configs
 
 ### Acquisition Mode
