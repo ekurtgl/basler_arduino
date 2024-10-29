@@ -19,10 +19,10 @@ print('Library version: %d.%d.%d.%d' % (version.major, version.minor, version.ty
 cam_list = system.GetCameras()
 cam = cam_list[cam_id]
 nodemap_tldevice = cam.GetTLDeviceNodeMap()
-nodemap = cam.GetNodeMap()
 sNodemap = cam.GetTLStreamNodeMap()
 
 cam.Init()
+nodemap = cam.GetNodeMap()
 
 print_device_info(cam)
         
@@ -68,15 +68,14 @@ cam.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
 # cam.AcquisitionFrameRateEnable(True)
 cam.AcquisitionFrameRate.SetValue(des_fps)
 cam.Width.SetValue(des_width)
-cam.Width(des_width)
 print(f'new fps: {cam.AcquisitionFrameRate.GetValue()}')
 
-print(dir(cam))
+# print(dir(cam))
+
+
+print(f'width: {cam.Width.GetValue()}, height: {cam.Height.GetValue()}, fps: {fps}')
+
 cam.BeginAcquisition()
-
-
-print(f'name: {name}, width: {width}, height: {height}, fps: {fps}')
-
 for i in range(countOfImagesToGrab):
     ret, frame = cap.read()
     cv2.imshow('flir cam', frame)
