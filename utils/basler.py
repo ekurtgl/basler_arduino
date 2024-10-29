@@ -49,7 +49,7 @@ class Basler():
         self.vid_cod = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
         self.nframes = 0
         self.logger = logger
-        self.logger.info('Connecting to the camera...')
+        self.logger.info('Connecting to the Basler camera...')
         # print('Connecting to the camera...')
 
         n = 0
@@ -117,7 +117,7 @@ class Basler():
         self.camera.Close()
 
     def init_video_writer(self):
-        self.writer_obj = cv2.VideoWriter(os.path.join(self.config['savedir'], self.experiment, "video.mp4"), self.vid_cod, self.args.videowrite_fps,
+        self.writer_obj = cv2.VideoWriter(os.path.join(self.config['savedir'], self.experiment, f"video_basler_{self.cam_id}.mp4"), self.vid_cod, self.args.videowrite_fps,
                                     (self.cam['options']['Width'], self.cam['options']['Height']))
         self.write_frames = True
         self.frame_write_queue = Queue()
@@ -376,7 +376,7 @@ class Basler():
 
     def save_vid_metadata(self, metadata=None):
         if metadata is not None:
-            with open(os.path.join(self.config['savedir'], self.experiment, f'metadata.json'), 'w') as file:
+            with open(os.path.join(self.config['savedir'], self.experiment, f'metadata_basler_{self.cam_id}.json'), 'w') as file:
                 json.dump(metadata, file)
                 # with open(os.path.join(self.config['savedir'], self.experiment, f'metadata.pickle'), 'wb') as file:
                 #     pickle.dump(metadata, file, pickle.HIGHEST_PROTOCOL)
