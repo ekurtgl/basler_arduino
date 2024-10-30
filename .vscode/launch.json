@@ -3,18 +3,18 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "python": "~/.conda/envs/fly/bin/python",
+    "python": "~/.conda/envs/flir/bin/python",
     "configurations": [
         {
             "name": "acquire basler arduino",
             "type": "debugpy",
             "request": "launch",
-            "program": "./acquire_frames_stimulation.py",
+            "program": "./acquire_multi_cam.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "config/config-basler_sw_trigger.yaml",
+                "--config", "config/config-basler_sw_trigger_multi_cam.yaml",
                 "--acquisition_mode", "frames",
-                "--n_total_frames", "1680",
+                "--n_total_frames", "180",
                 "--trigger_with_arduino", "0",
                 "--save", "1",
                 "--videowrite_fps", "30",
