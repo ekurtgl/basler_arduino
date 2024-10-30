@@ -37,7 +37,7 @@ class VideoShow:
         self.pos = (50, 50)
         self.fontScale = 1
         # self.fontcolor = (255, 255, 255) # white
-        self.fontcolor = (0, 0, 255) # blue
+        self.fontcolor = (255, 0, 0) # blue
         self.fontthickness = 2
 
         self.lock = threading.Lock()
@@ -63,6 +63,8 @@ class VideoShow:
         cv2.namedWindow(self.name, cv2.WINDOW_NORMAL) 
         cv2.resizeWindow(self.name, self.prev_width, self.prev_height) 
         while not self.stopped:
+            if len(self.frame.shape) == 2:
+                self.frame = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR) 
             if self.show_pred:
                 for target_number, target in enumerate(self.pred_result):
                     for key_point in target:
