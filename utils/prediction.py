@@ -24,8 +24,8 @@ class Predictor():
         self.get_random_prediction()
 
         if self.model_path == '':
-            self.logger.info('model_path is not provided, drawing random predictions')
-            # print('model_path is not provided, drawing random predictions')
+            self.logger.info('model_path is not provided, making random predictions')
+            # print('model_path is not provided, drawing making predictions')
         else:
             self.load_model()
 

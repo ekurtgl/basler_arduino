@@ -10,7 +10,6 @@ countOfImagesToGrab = 120
 cam_id = 0
 # The exit code of the sample application.
 exitCode = 0
-start_t = time.perf_counter()
 
 # Setup the system and camera
 system = PySpin.System.GetInstance()
@@ -60,7 +59,7 @@ fps = cam.AcquisitionFrameRate.GetValue()
 print(f'fps: {fps}')
 
 is_wrtable = PySpin.IsWritable(cam.AcquisitionFrameRate)
-des_fps = 30
+des_fps = 40
 des_width = 1280
 des_height = 1258
 
@@ -68,26 +67,52 @@ cam.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
 # cam.AcquisitionFrameRateEnable(True)
 cam.AcquisitionFrameRate.SetValue(des_fps)
 cam.Width.SetValue(des_width)
-print(f'new fps: {cam.AcquisitionFrameRate.GetValue()}')
+cam.Height.SetValue(des_height)
+
+width = cam.Width.GetValue()
+height = cam.Height.GetValue()
+fps = cam.AcquisitionFrameRate.GetValue()
+
 
 # print(dir(cam))
 
 
-print(f'width: {cam.Width.GetValue()}, height: {cam.Height.GetValue()}, fps: {fps}')
+print(f'width: {width}, height: {height}, fps: {fps}')
 
 cam.BeginAcquisition()
-for i in range(countOfImagesToGrab):
-    ret, frame = cap.read()
-    cv2.imshow('flir cam', frame)
-    k = cv2.waitKey(1)
-    if i % 30 == 0:
-        print(f'name: {name}, width: {width}, height: {height}, fps: {fps}')
 
-    if k in [27, ord('q')]:
-        break
+cv2.namedWindow("flir cam", cv2.WINDOW_NORMAL) 
+cv2.resizeWindow("flir cam", 500, 300) 
+
+start_t = time.perf_counter()
+for i in range(countOfImagesToGrab):
+    try:
+        image_result = cam.GetNextImage(1000)
+
+        #  Ensure image completion
+        if image_result.IsIncomplete():
+            print('Image incomplete with image status %d ...' % image_result.GetImageStatus())
+        else:
+            frame = image_result.GetNDArray()
+
+        image_result.Release()
+
+        cv2.imshow('flir cam', frame)
+        k = cv2.waitKey(1)
+        if i % 30 == 0:
+            print(f'width: {width}, height: {height}, fps: {fps}')
+
+        if k in [27, ord('q')]:
+            break
+
+    except PySpin.SpinnakerException as ex:
+        print('Error: %s' % ex)
+
+cam.EndAcquisition()
 
 print(f'elapsed time: {time.perf_counter() - start_t}')
 
 cam.DeInit()
 cam_list.Clear()
 system.ReleaseInstance()
+cv2.destroyAllWindows()

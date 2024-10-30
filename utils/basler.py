@@ -8,15 +8,12 @@ import numpy as np
 # import matplotlib.pyplot as plt
 from datetime import datetime
 import pypylon
-import pprint
-from pypylon import pylon, genicam
-from threading import Thread
-from queue import LifoQueue, Queue
+from pypylon import pylon
+from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
-from .helpers import str_to_bool
-from .preview import VideoShow
-from .prediction import Predictor
-from tqdm import tqdm
+from utils.helpers import str_to_bool
+from utils.preview import VideoShow
+from utils.prediction import Predictor
 
 tp = ThreadPoolExecutor(100)  # max 10 threads
 
@@ -28,7 +25,7 @@ def threaded(fn):
 class Basler():
 
     def __init__(self, args, cam, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
-        print('Searching for camera...')
+        print(f'Basler {self.cam_id}: Searching for camera...')
 
         self.start_t = start_t
         self.args = args
@@ -49,7 +46,7 @@ class Basler():
         self.vid_cod = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
         self.nframes = 0
         self.logger = logger
-        self.logger.info('Connecting to the Basler camera...')
+        self.logger.info(f'Basler {self.cam_id}: Connecting to the Basler camera...')
         # print('Connecting to the camera...')
 
         n = 0
@@ -61,13 +58,13 @@ class Basler():
                 # self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
                 # print(dir(self.camera))
                 # self.camera.MaxNumBuffer.Value = 20
-                self.logger.info(f"Num. of cameras detected: {cameras.GetSize()}, selected cam_ID: {cam_id}")
+                self.logger.info(f"Basler {self.cam_id}: Num. of cameras detected: {cameras.GetSize()}, selected cam_ID: {cam_id}")
                 # print(f"Num. of cameras detected: {cameras.GetSize()}, selected cam_ID: {cam_id}")
                 self.init_camera()
 
             except Exception as e:
                 # self.logger.info(f'Trying to detect camera, trial {n}/{connect_retries}...')
-                print(f'Trying to detect camera, trial {n}/{connect_retries}...')
+                print(f'Basler {self.cam_id}: Trying to detect camera, trial {n}/{connect_retries}...')
                 time.sleep(0.1)
                 cameras = None
                 n += 1
@@ -261,18 +258,18 @@ class Basler():
             self.camera.StartGrabbingMax(n_frames)
 
         # print(f"Started cam {self.name} acquisition")
-        self.logger.info(f"Started cam {self.name} acquisition")
+        self.logger.info(f"Basler {self.cam_id}: Started acquisition")
         self.start_timer = time.perf_counter()
 
-        self.logger.info("Looping - %s" % self.name)
+        # self.logger.info("Looping - %s" % self.name)
         # print("Looping - %s" % self.name)
         
         try:
             if self.camera.GetGrabResultWaitObject().Wait(0):
                 # print("grab results waiting")
-                self.logger.info("grab results waiting")
+                self.logger.info(f"Basler {self.cam_id}: grab results waiting")
 
-            self.logger.info('Checking for results')
+            self.logger.info(f'Basler {self.cam_id}: Checking for results')
             # print('Checking for results')
             last_report = 0
 
@@ -280,7 +277,7 @@ class Basler():
                 elapsed_pre = time.perf_counter() - self.start_timer #exp_start_tim     
                 if round(elapsed_pre) % 5 == 0 and round(elapsed_pre) != last_report:
                     # print("...waiting grabbing", round(elapsed_pre))
-                    self.logger.info("...waiting grabbing", round(elapsed_pre))
+                    self.logger.info(f"Basler {self.cam_id}: ...waiting grabbing", round(elapsed_pre))
                     
                 last_report = round(elapsed_pre)
 
@@ -294,13 +291,13 @@ class Basler():
 
                 if self.nframes % round(report_period * self.cam['options']['AcquisitionFrameRate']) == 0:
                     # print("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
-                    self.logger.info("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
+                    self.logger.info("Basler %d: [fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam_id, self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
 
                 image_result = self.camera.RetrieveResult(timeout_time, pylon.TimeoutHandling_Return) #, pylon.TimeoutHandling_ThrowException)
                 #if (image_result.GetNumberOfSkippedImages()):
                 #    print("Skipped ", image_result.GetNumberOfSkippedImages(), " image.")
                 if image_result is None and int(elapsed_time) % 5 == 0: #not image_result.GrabSucceeded():
-                    self.logger.info("... waiting frame")
+                    self.logger.info(f"Basler {self.cam_id}:... waiting frame")
                     # print("... waiting frame")
                     continue
 
@@ -332,12 +329,12 @@ class Basler():
                             self.vid_show.pred_result = self.predictor.pred_result
 
                     metadata[image_result.ID] = {}
-                    metadata[image_result.ID]['time_stamp'] = datetime.now().strftime("%Y%m%d_%H_%M_%S.%f")  # microsec precision
+                    metadata[image_result.ID]['date_time_stamp'] = datetime.now().strftime("%Y%m%d_%H_%M_%S.%f")  # microsec precision
                     metadata[image_result.ID]['fps'] = self.camera.ResultingFrameRate.Value
                     # metadata[grabResult.ID]['frame_ID'] = grabResult.ID
                     metadata[image_result.ID]['frame_number'] = image_result.ImageNumber
                     metadata[image_result.ID]['time_stamp_w_offset'] = image_result.GetTimeStamp()*1e-9 + self.timestamp_offset
-                    metadata[image_result.ID]['pylon_time_stamp'] = image_result.TimeStamp                    
+                    metadata[image_result.ID]['cam_clock_time_stamp'] = image_result.TimeStamp                    
 
                     image_result.Release()
 
@@ -345,16 +342,16 @@ class Basler():
                     if self.nframes >= n_frames:
                         if self.preview:
                             self.vid_show.stop()
-                        self.logger.info("Breaking...")
+                        self.logger.info(f"Basler {self.cam_id}: Breaking...")
                         # print("Breaking...")
                         break 
 
         except KeyboardInterrupt:
-            self.logger.info("ABORT loop")
+            self.logger.info(f"Basler {self.cam_id}: Keyboard interrupt detected.")
             # print("ABORT loop")
             
         finally:
-            self.close()
+            
             if self.preview:
                 self.vid_show.stop()
             if self.predict:
@@ -362,8 +359,8 @@ class Basler():
             if self.save:
                 self.write_frames = False
                 self.save_vid_metadata(metadata)
-            self.logger.info(f'Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
-            self.logger.info(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+            self.logger.info(f'Basler {self.cam_id}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            self.logger.info(f'Basler {self.cam_id}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
             # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
     
