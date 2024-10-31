@@ -18,10 +18,34 @@ print('Library version: %d.%d.%d.%d' % (version.major, version.minor, version.ty
 cam_list = system.GetCameras()
 cam = cam_list[cam_id]
 nodemap_tldevice = cam.GetTLDeviceNodeMap()
-sNodemap = cam.GetTLStreamNodeMap()
+
+# cam.UserSetSelector.SetValue(PySpin.UserSetSelector_Default)
+# cam.UserSetSelector.SetValue(PySpin.UserSetSelector_UserSet0)
+# cam.UserSetSave.Execute()
 
 cam.Init()
 nodemap = cam.GetNodeMap()
+
+cam.UserSetSelector.SetValue(PySpin.UserSetSelector_Default)
+cam.UserSetLoad.Execute()
+
+############## reset
+# reset_node = PySpin.CCommandPtr(nodemap.GetNode('DeviceReset'))
+# reset_node.Execute()
+# time.sleep(2)
+
+# # cam.DeInit()
+# cam_list.Clear()   # Clear the camera list
+# system.ReleaseInstance()  # Release the system instance
+# print("Camera disconnected.")
+
+# system = PySpin.System.GetInstance()
+# cam_list = system.GetCameras()
+# cam = cam_list[0]
+# cam.Init()
+# nodemap_tldevice = cam.GetTLDeviceNodeMap()
+# nodemap = cam.GetNodeMap()
+# print("Camera reconnected.")
 
 print_device_info(cam)
         
@@ -50,21 +74,27 @@ print('Acquisition mode set to continuous...')
 
 configure_custom_image_settings(cam)
 
-# cam.FrameRateAuto.SetValue('Off')
-# cam.AcquisitionFrameRate.SetValue(30)
+
+# disable auto frame rate
+node_frame_rate_auto = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionFrameRateAuto"))
+node_frame_rate_auto_off = node_frame_rate_auto.GetEntryByName("Off")
+frame_rate_auto_off = node_frame_rate_auto_off.GetValue()
+node_frame_rate_auto.SetIntValue(frame_rate_auto_off)
 
 
-print('Acquiring images...')
-fps = cam.AcquisitionFrameRate.GetValue()
-print(f'fps: {fps}')
+node_frame_rate_enable = PySpin.CBooleanPtr(nodemap.GetNode("AcquisitionFrameRateEnabled"))
+node_frame_rate_enable.SetValue(True)
 
-is_wrtable = PySpin.IsWritable(cam.AcquisitionFrameRate)
+# fps = cam.AcquisitionFrameRate.GetValue()
+# print(f'fps: {fps}')
+
+# is_wrtable = PySpin.IsWritable(cam.AcquisitionFrameRate)
 des_fps = 40
 des_width = 1280
 des_height = 1258
 
 cam.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
-# cam.AcquisitionFrameRateEnable(True)
+
 cam.AcquisitionFrameRate.SetValue(des_fps)
 cam.Width.SetValue(des_width)
 cam.Height.SetValue(des_height)
@@ -77,9 +107,10 @@ fps = cam.AcquisitionFrameRate.GetValue()
 # print(dir(cam))
 
 
-print(f'width: {width}, height: {height}, fps: {fps}')
+# print(f'width: {width}, height: {height}, fps: {fps}')
 
 cam.BeginAcquisition()
+print('Acquiring images...')
 
 cv2.namedWindow("flir cam", cv2.WINDOW_NORMAL) 
 cv2.resizeWindow("flir cam", 500, 300) 
@@ -99,8 +130,8 @@ for i in range(countOfImagesToGrab):
 
         cv2.imshow('flir cam', frame)
         k = cv2.waitKey(1)
-        if i % 30 == 0:
-            print(f'width: {width}, height: {height}, fps: {fps}')
+        # if i % 30 == 0:
+            # print(f'width: {width}, height: {height}, fps: {fps}')
 
         if k in [27, ord('q')]:
             break

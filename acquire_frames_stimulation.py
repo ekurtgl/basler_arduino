@@ -93,17 +93,17 @@ def main():
     parser = argparse.ArgumentParser(description='Multi-device acquisition in Python.')
     parser.add_argument('-n','--name', type=str, default='JB999',
         help='Base name for directories. Example: mouse ID')
-    parser.add_argument('-c', '--config', type=str, default='config/config-basler2040.yaml', 
+    parser.add_argument('-c', '--config', type=str, default='config/config-basler_hw_trigger_multi_cam.yaml', 
         help='Configuration for acquisition. Defines number of cameras, serial numbers, etc.')
-    parser.add_argument('-p', '--preview', default='False', # action='store_true',
+    parser.add_argument('-p', '--preview', default='True', # action='store_true',
         help='Show preview in opencv window')
-    parser.add_argument('--predict', default='False',
+    parser.add_argument('--predict', default='True',
         help='Make detection inference from the trained model')
-    parser.add_argument('--preview_prediction', default='False',
+    parser.add_argument('--preview_prediction', default='True',
         help='Show detections overlayed on preview in opencv window')
     parser.add_argument('--model_path', default='', type=str, 
         help='Path to the prediction model')
-    parser.add_argument('--stimulation_path', default='', type=str, 
+    parser.add_argument('--stimulation_path', default='config/stimulation_config.json', type=str, 
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="True", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
@@ -111,7 +111,7 @@ def main():
         help='Use this flag to print debugging commands.')
     parser.add_argument('-a', '--acquisition_mode', default='frames', # action='store_true',
         help='Acquisition mode.')
-    parser.add_argument('--n_total_frames', default=3, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=1680, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
     parser.add_argument('--movie_format', default='opencv',
         choices=['hdf5','opencv', 'ffmpeg', 'directory'], type=str,

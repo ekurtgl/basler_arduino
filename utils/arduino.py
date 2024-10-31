@@ -42,5 +42,7 @@ class Arduino():
                 
             self.logger.info("Received msg from arduino: {}".format(recv))
         
-
+    def close(self):
+        self.continuous_listen = False
+        self.arduino.close()
     

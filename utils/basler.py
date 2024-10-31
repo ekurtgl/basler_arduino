@@ -25,7 +25,6 @@ def threaded(fn):
 class Basler():
 
     def __init__(self, args, cam, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
-        print(f'Basler {self.cam_id}: Searching for camera...')
 
         self.start_t = start_t
         self.args = args
@@ -38,14 +37,15 @@ class Basler():
         self.save = str_to_bool(self.args.save)
         self.predict = str_to_bool(self.args.predict)
         self.preview_predict = str_to_bool(self.args.preview_prediction)
+        self.logger = logger
         cameras = None
         # get transport layer factory
         self.tlFactory = pylon.TlFactory.GetInstance()
         # get the camera list 
+        self.logger.info(f'Basler {self.cam_id}: Searching for camera...')
         self.devices = self.tlFactory.EnumerateDevices()
         self.vid_cod = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
         self.nframes = 0
-        self.logger = logger
         self.logger.info(f'Basler {self.cam_id}: Connecting to the Basler camera...')
         # print('Connecting to the camera...')
 

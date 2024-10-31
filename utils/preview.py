@@ -18,7 +18,7 @@ class VideoShow:
     """
 
     def __init__(self, name, show_pred=False, frame=None, preview_button='q', pred_preview_button='p',
-                 prev_width=300, prev_height=300):
+                 prev_width=500, prev_height=500):
         self.frame = frame
         self.name = name
         self.show_pred = show_pred

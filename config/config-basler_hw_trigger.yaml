@@ -39,7 +39,6 @@ cams:
       CenterX: True
       CenterY: True
       PixelFormat: Mono8
-      # AcquisitionFrameRateEnable: True # False if external HW trigger per frame
       AcquisitionFrameRateEnable: False # False if external HW trigger per frame
       AcquisitionFrameRate: 120.0
       GainAuto: 'Off'

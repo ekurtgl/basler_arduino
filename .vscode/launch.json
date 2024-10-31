@@ -12,9 +12,9 @@
             "program": "./acquire_multi_cam.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "config/config-basler_sw_trigger_multi_cam.yaml",
+                "--config", "config/config-basler_hw_trigger_multi_cam.yaml",
                 "--acquisition_mode", "frames",
-                "--n_total_frames", "180",
+                "--n_total_frames", "1680",
                 "--trigger_with_arduino", "0",
                 "--save", "1",
                 "--videowrite_fps", "30",

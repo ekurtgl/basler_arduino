@@ -63,7 +63,7 @@ def main():
     parser = argparse.ArgumentParser(description='Multi-device acquisition in Python.')
     parser.add_argument('-n','--name', type=str, default='JB999',
         help='Base name for directories. Example: mouse ID')
-    parser.add_argument('-c', '--config', type=str, default='config/config-basler_sw_trigger_multi_cam.yaml', 
+    parser.add_argument('-c', '--config', type=str, default='config/config-basler_multi_cam.yaml', 
         help='Configuration for acquisition. Defines number of cameras, serial numbers, etc.')
     parser.add_argument('-p', '--preview', default='1',
         help='Show preview in opencv window')
@@ -73,12 +73,14 @@ def main():
         help='Show detections overlayed on preview in opencv window')
     parser.add_argument('--model_path', default='', type=str, 
         help='Path to the prediction model')
-    parser.add_argument('--stimulation_path', default='', type=str, 
+    parser.add_argument('--stimulation_path', default='', type=str, # config/stimulation_config.json
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=120, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=1680, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
+    parser.add_argument('-t', '--trigger_with_arduino', default="1",
+         type=str, help='Flag to use python software trigger (instead of arduino)')
     parser.add_argument('--port', default='/dev/ttyACM0', type=str,
          help='port for arduino (default: /dev/ttyACM0)')
     parser.add_argument('-a', '--acquisition_mode', default='frames', # action='store_true',
@@ -101,8 +103,6 @@ def main():
          help='Experiment dur in minutes (default: inf.)')
     parser.add_argument('-f', '--nframes_per_file', default=108000, type=int,
          help='N frames per file (default: 108000, or 15min at 120Hz)')
-    parser.add_argument('-t', '--trigger_with_arduino', default="False",
-         type=str, help='Flag to use python software trigger (instead of arduino)')
     parser.add_argument('-N', '--nodemap_path', default=None,
          action='store', help='Path to nodemap (.txt)')
 
@@ -168,13 +168,6 @@ def main():
     #     #p = mp.Process(target=initialize_and_loop, args=(tup,))
     #     #p.start()
     
-    if args.stimulation_path != '':
-        stimulator = Stimulator(args, arduino, cam, logger, os.path.join(directory, 'loaded_stimulation_config.json'))
-        logger.info('\nStimulation parameters:')
-        stimulator.print_params()
-        stimulator.send_stim_config()
-    
-
     if trigger_with_arduino:
         if pwm_fps is None:
             raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
@@ -182,6 +175,13 @@ def main():
         arduino.arduino.write(cmd.encode())
         logger.info("***Sent msg to Arduino: {} ***".format(cmd))
         time.sleep(0.5)
+
+    if args.stimulation_path != '':
+        stimulator = Stimulator(args, arduino, cam, logger, os.path.join(directory, 'loaded_stimulation_config.json'))
+        logger.info('\nStimulation parameters:')
+        stimulator.print_params()
+        stimulator.send_stim_config()
+        time.sleep(0.1) # if stim doesn't work, sleep time may need to be adjusted based on computer's speed
 
     futures = []
 
@@ -192,6 +192,7 @@ def main():
 
     if args.stimulation_path != '':
         stimulator.send_stim_trigger()
+        # time.sleep(0.1)
     
     for future in futures:
         future.result()
@@ -202,6 +203,8 @@ def main():
         time.sleep(0.2)
         arduino.arduino.write("V\n".encode()) #b'Q\r\n')
         time.sleep(0.2)
+        arduino.arduino.close()
+        logger.info("Arduino is closed.")
     logger.info(f'Experiment is finished.')
         
 if __name__=='__main__':
