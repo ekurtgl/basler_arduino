@@ -174,12 +174,6 @@ def main():
         stimulator.print_params()
         stimulator.send_stim_config()
     
-    futures = []
-
-    for tup in tuple_list:
-        if args.acquisition_mode == 'frames':
-            future = initialize_and_loop(tup, logger, report_period=1)
-            futures.append(future)
 
     if trigger_with_arduino:
         if pwm_fps is None:
@@ -188,6 +182,13 @@ def main():
         arduino.arduino.write(cmd.encode())
         logger.info("***Sent msg to Arduino: {} ***".format(cmd))
         time.sleep(0.5)
+
+    futures = []
+
+    for tup in tuple_list:
+        if args.acquisition_mode == 'frames':
+            future = initialize_and_loop(tup, logger, report_period=1)
+            futures.append(future)
 
     if args.stimulation_path != '':
         stimulator.send_stim_trigger()
