@@ -4,6 +4,7 @@ import json
 import time
 import PySpin
 import numpy as np
+import utils.pointgrey_utils as pg
 from datetime import datetime
 from .preview import VideoShow
 from .prediction import Predictor
@@ -73,13 +74,14 @@ class FLIR():
         if len(self.cam_list) == 0:
             raise Exception(f'FLIR {self.cam_id} is not detected.')
         
-        self.camera = self.cam_list[self.cam_id]
+        self.camera = self.cam_list.GetBySerial(str(self.cam['serial']))
+        # self.camera = self.cam_list[self.cam_id]
         self.camera.Init()
         # self.compute_timestamp_offset()
         self.nodemap = self.camera.GetNodeMap()
         self.nodemap_tldevice = self.camera.GetTLDeviceNodeMap()
         self.device_serial_number = PySpin.CStringPtr(self.nodemap_tldevice.GetNode('DeviceSerialNumber')).GetValue()
-        self.reset()
+        self.set_default_params()
         self.logger.info(f'FLIR {self.cam_id} is initialized.')
         
     def update_settings(self):
@@ -87,26 +89,60 @@ class FLIR():
         # if not str_to_bool(self.args.trigger_with_arduino):
         #     self.reset()
         # else:
+        for key, value in self.cam['options'].items():
+        # for key, value in options.items():
+            if key == 'AcquisitionFrameRate':
+                continue
+            pg.set_value(self.nodemap, key, value)
         if str_to_bool(self.args.trigger_with_arduino):
-            configure_trigger(self.camera, TriggerType.HARDWARE)
-
-        if str_to_bool(self.args.trigger_with_arduino):
-            # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
-            self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
-            # node_acquisition_mode_val = node_acquisition_mode.GetEntryByName('Single Frame')
-        else:
-            self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
-            # node_acquisition_mode_val = node_acquisition_mode.GetEntryByName('Continuous')
-
-        # acquisition_mode = node_acquisition_mode_val.GetValue()
-        # node_acquisition_mode.SetIntValue(acquisition_mode)
-        self.logger.info(f'FLIR {self.cam_id} acquisition mode is set to {"continuous" if not str_to_bool(self.args.trigger_with_arduino) else "single frame"}.')
+            pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
         
-        if self.cam['options']['PixelFormat'] == 'Mono8':
-            self.camera.PixelFormat.SetValue(PySpin.PixelFormat_Mono8) 
+        # if str_to_bool(self.args.trigger_with_arduino):
+        #     # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
+        #     # configure_trigger(self.camera, TriggerType.HARDWARE)
+        #     # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
+        #     # node_single_frame = PySpin.CEnumerationPtr(self.nodemap.GetNode("SingleFrameAcquisitionMode"))
+        #     # single_frame_enable = node_single_frame.GetEntryByName("Triggered").GetValue()
+        #     # node_single_frame.SetIntValue(single_frame_enable)
+            
+            
+        #     # self.camera.LineSelector.SetValue(PySpin.LineSelector_Line0)
+        #     # self.camera.V3_3Enable.SetValue(True)
+        #     # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_MultiFrame)
 
-        self.camera.Width.SetValue(self.cam['options']['Width'])
-        self.camera.Height.SetValue(self.cam['options']['Height'])
+        #     # node_acquisition_mode_val = node_acquisition_mode.GetEntryByName('Single Frame')
+
+        #     for key, value in self.cam['options'].items():
+        #     # for key, value in options.items():
+        #         if key == 'AcquisitionFrameRate':
+        #             continue
+        #         pg.set_value(self.nodemap, key, value)
+        #     pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
+        #     # pg.turn_strobe_on(self.nodemap, strobe['line'], strobe_duration=strobe['duration'])
+
+        #     # Set acquisition mode to single-frame
+        #     # self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_MultiFrame)
+        #     # # Set trigger mode to On
+        #     # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_Off)  # Disable trigger mode first to configure settings
+        #     # self.camera.TriggerSource.SetValue(PySpin.TriggerSource_Line0)  # Set to external trigger line (usually Line0)
+        #     # self.camera.TriggerSelector.SetValue(PySpin.TriggerSelector_FrameStart)  # Trigger each frame
+        #     # self.camera.TriggerActivation.SetValue(PySpin.TriggerActivation_RisingEdge)  # Trigger on rising edge of pulse
+        #     # # Enable Trigger mode
+        #     # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_On)
+
+        # else:
+        #     self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
+        #     # node_acquisition_mode_val = node_acquisition_mode.GetEntryByName('Continuous')
+
+        # # acquisition_mode = node_acquisition_mode_val.GetValue()
+        # # node_acquisition_mode.SetIntValue(acquisition_mode)
+        # self.logger.info(f'FLIR {self.cam_id} acquisition mode is set to {"continuous" if not str_to_bool(self.args.trigger_with_arduino) else "single frame"}.')
+        
+        # if self.cam['options']['PixelFormat'] == 'Mono8':
+        #     self.camera.PixelFormat.SetValue(PySpin.PixelFormat_Mono8) 
+
+        # self.camera.Width.SetValue(self.cam['options']['Width'])
+        # self.camera.Height.SetValue(self.cam['options']['Height'])
         
         # disable auto frame rate
         if not str_to_bool(self.args.trigger_with_arduino):
@@ -125,8 +161,8 @@ class FLIR():
         self.logger.info(f'FLIR {self.cam_id}: width: {width}, height: {height}')
         self.logger.info(f'FLIR {self.cam_id} settings updated.')
     
-    def reset(self):
-        self.logger.info(f"FLIR {self.cam_id}: Resetting...")
+    def set_default_params(self):
+        self.logger.info(f"FLIR {self.cam_id}: Setting default params...")
         self.camera.UserSetSelector.SetValue(PySpin.UserSetSelector_Default)
         self.camera.UserSetLoad.Execute()
 

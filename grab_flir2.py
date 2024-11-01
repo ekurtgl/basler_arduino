@@ -72,7 +72,7 @@ acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
 node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
 print('Acquisition mode set to continuous...')
 
-configure_custom_image_settings(cam)
+# configure_custom_image_settings(cam)
 
 
 # disable auto frame rate
@@ -105,6 +105,12 @@ fps = cam.AcquisitionFrameRate.GetValue()
 
 
 # print(dir(cam))
+
+############## for hw trigger
+node_single_frame = PySpin.CEnumerationPtr(nodemap.GetNode("SingleFrameAcquisitionMode"))
+single_frame_enable = node_single_frame.GetEntryByName("Triggered").GetValue()
+node_single_frame.SetIntValue(single_frame_enable)
+
 
 
 # print(f'width: {width}, height: {height}, fps: {fps}')

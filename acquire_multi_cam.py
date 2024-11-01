@@ -77,9 +77,9 @@ def main():
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=1680, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=360, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
-    parser.add_argument('-t', '--trigger_with_arduino', default="1",
+    parser.add_argument('-t', '--trigger_with_arduino', default="0",
          type=str, help='Flag to use python software trigger (instead of arduino)')
     parser.add_argument('--port', default='/dev/ttyACM0', type=str,
          help='port for arduino (default: /dev/ttyACM0)')

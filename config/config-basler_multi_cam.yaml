@@ -46,10 +46,22 @@ cams:
     master: True
     serial: 23386795
     options:
-      Width: 1280
-      Height: 1280
+      AcquisitionMode: 'Continuous' # can capture one frame (SingleFrame) or multiple frames as well
+      ExposureAuto: 'Off' # manually set exposure
+      ExposureTime: 1000.0 # in microseconds, so 1000 = 1ms
+      BinningVertical: 1 
+      Height: 1280 # max 1024 if Binning=1, else 512
+      Width: 1280 # max 1280 if Binning=1, else 640
+      OffsetX: 0 # left value of ROI
+      OffsetY: 0 # right value of ROI
       PixelFormat: 'Mono8'
+      AcquisitionFrameRateAuto: 'Off' # Continuous, Once, Off
       AcquisitionFrameRate: 120.0
+      GainAuto: 'Off'
+      Gain: 0.0
+    strobe:
+      line: 0
+      duration: 0.0
 
 
 
