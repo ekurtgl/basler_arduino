@@ -46,7 +46,7 @@ cams:
     master: True
     serial: 23386795
     options:
-      AcquisitionMode: 'Continuous' # can capture one frame (SingleFrame) or multiple frames as well
+      AcquisitionMode: 'Continuous' # [SingleFrame, Continuous, MultiFrame]
       ExposureAuto: 'Off' # manually set exposure
       ExposureTime: 1000.0 # in microseconds, so 1000 = 1ms
       BinningVertical: 1 

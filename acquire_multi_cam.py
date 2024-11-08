@@ -79,7 +79,7 @@ def main():
         help='Use this flag to save to disk. If not passed, will only view')
     parser.add_argument('--n_total_frames', default=360, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
-    parser.add_argument('-t', '--trigger_with_arduino', default="0",
+    parser.add_argument('-t', '--trigger_with_arduino', default="1",
          type=str, help='Flag to use python software trigger (instead of arduino)')
     parser.add_argument('--port', default='/dev/ttyACM0', type=str,
          help='port for arduino (default: /dev/ttyACM0)')

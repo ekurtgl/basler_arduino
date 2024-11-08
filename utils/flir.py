@@ -96,6 +96,7 @@ class FLIR():
             pg.set_value(self.nodemap, key, value)
         if str_to_bool(self.args.trigger_with_arduino):
             pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
+            # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
         
         # if str_to_bool(self.args.trigger_with_arduino):
         #     # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
@@ -316,7 +317,11 @@ class FLIR():
                             self.vid_show.stop()
                         self.logger.info(f"FLIR {self.cam_id}: Breaking...")
                         # print("Breaking...")
-                        break 
+                        break
+
+                    if self.cam['options']['AcquisitionMode'] == 'SingleFrame':
+                        self.camera.EndAcquisition()
+                        self.camera.BeginAcquisition()
 
         except KeyboardInterrupt:
             self.logger.info(f"FLIR {self.cam_id}: Keyboard interrupt detected.")
