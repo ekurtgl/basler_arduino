@@ -12,6 +12,7 @@ from .helpers import str_to_bool
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
 
+# PySpin.System.SetCTIFile("/opt/spinnaker/lib/spinnaker-gentl/Spinnaker_GenTL.cti")
 
 tp = ThreadPoolExecutor(100)  # max 10 threads
 

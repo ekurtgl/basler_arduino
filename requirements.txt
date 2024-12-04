@@ -18,6 +18,5 @@ python-xlib==0.33
 PyYAML==6.0.2
 setuptools==75.1.0
 six==1.16.0
-spinnaker-python==4.0.0.116
 tqdm==4.66.6
 wheel==0.44.0

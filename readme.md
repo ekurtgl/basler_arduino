@@ -9,6 +9,8 @@ The program utilizes threading capabilities of Python to run tasks concurrently 
 ### Software
 
 1. Download and install [Basler Pylon SDK](https://www2.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware).
+2. Download and install [FLIR Spinnaker SDK 4.0.0 (both GUI and Python SDK)](https://www.teledynevisionsolutions.com/support/support-center/software-firmware-downloads/iis/spinnaker-sdk-download/spinnaker-sdk--download-files/?pn=Spinnaker+SDK&vn=Spinnaker+SDK). Make sure the correct FFMPEG dependencies exist. I used [FFMPEG-4.4.5 "Rao"](https://www.ffmpeg.org/download.html#releases).
+
 2. **[Optional for hardware trigger with Arduino]** Upload `utils/arduino_pwm_led/arduino_pwm_led.ino` file to the Arduino.
 
 ### Hardware
@@ -114,3 +116,41 @@ If the Arduino IDE stalls with the following notification:
 
 End arduino processes in the system monitor or kill their pids, and delete `/home/<username>/.arduinoIDE/arduino-cli.yaml` file.
 
+# Software Troubleshoot
+
+### Spinnaker
+
+I needed to make a static build for the FFMPEG by following the commands:
+
+```bash
+# Navigate to the downloaded folder
+cd ~/Downloads/ffmpeg-4.4.5
+
+# Configure FFmpeg with Shared Libraries: Rebuild FFmpeg, enabling shared libraries
+./configure --enable-shared --disable-static --enable-gpl --disable-x86asm
+
+# Compile and Install
+make -j$(nproc)
+sudo make install
+
+# make sure the .so files are present
+ls /usr/local/lib | grep libav
+
+# update library cache
+sudo ldconfig
+```
+
+For the following error in SpinView:
+
+```
+Spinnaker system instance cannot be acquired. could not load producer.make sure the environemnt variable SPINNAKEr_gentl64_cti exists, and points to the location of the file spinnaker_gentl.cti [-1012]
+```
+
+Set the environment variables:
+
+```bash
+sudo nano ~/.bashrc
+export SPINNAKER_GENTL64_CTI=/opt/spinnaker/lib/spinnaker-gentl/Spinnaker_GenTL.cti
+export LD_LIBRARY_PATH=/opt/spinnaker/lib:$LD_LIBRARY_PATH
+```
+Then reboot. Make sure SpinView runs. 
