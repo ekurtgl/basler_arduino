@@ -19,7 +19,9 @@ The program utilizes threading capabilities of Python to run tasks concurrently 
 
 Optional Steps for hardware trigger:
 
-2. Connect Pin 3 of Arduino with Pin 1 (Brown cable) of the Basler, and GND pin of Arduino with Pin 6 (White cable) of the Basler.
+2. Connect:
+    - Pin 3 of Arduino with Pin 1 (Brown cable) of the Basler, and Pin 4 (Green cable) of the FLIR GS3-U3.
+    - GND pin of Arduino with Pin 6 (White cable) of the Basler, and Pin 5 (Brown cable) of the FLIR GS3-U3.
 
 3. Connect Pin 10 of Arduino with the stimulation's input ((+) for the external LED) line, and GND pin of Arduino with LED's (-) line.
 
@@ -33,7 +35,7 @@ cd /etc/udev/rules.d
 #create a new rule file
 sudo touch my-newrule.rules
 # open the file
-sudo vim my-newrule.rules
+sudo nano my-newrule.rules
 # add the following
 KERNEL=="ttyACM0", MODE="0666"
 ```

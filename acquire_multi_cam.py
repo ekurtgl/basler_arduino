@@ -73,13 +73,13 @@ def main():
         help='Show detections overlayed on preview in opencv window')
     parser.add_argument('--model_path', default='', type=str, 
         help='Path to the prediction model')
-    parser.add_argument('--stimulation_path', default='', type=str, # config/stimulation_config.json
+    parser.add_argument('--stimulation_path', default='config/stimulation_config.json', type=str, # config/stimulation_config.json
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=360, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=1680, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
-    parser.add_argument('-t', '--trigger_with_arduino', default="0",
+    parser.add_argument('-t', '--trigger_with_arduino', default="1",
          type=str, help='Flag to use python software trigger (instead of arduino)')
     parser.add_argument('--port', default='/dev/ttyACM0', type=str,
          help='port for arduino (default: /dev/ttyACM0)')

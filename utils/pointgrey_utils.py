@@ -67,7 +67,7 @@ def turn_strobe_on(nodemap, line, strobe_duration=0.0):
     # values for Line2, for example, not Line0
     # set_value(nodemap, 'LineSelector', linestr)
     # # one of input, trigger, strobe, output
-    # set_value(nodemap, 'LineMode', 'Input')
+    # set_value(nodemap, 'LineMode', 'Strobe')
     # # enable strobe
     # set_value(nodemap, 'StrobeEnabled', True)
     # # set duration, in us I think?
@@ -81,7 +81,7 @@ def turn_strobe_on(nodemap, line, strobe_duration=0.0):
     set_value(nodemap, 'TriggerSource', linestr)
     set_value(nodemap, 'TriggerDelay', 0.0)
     set_value(nodemap, 'TriggerActivation', 'RisingEdge')
-    #set_value(nodemap, 'AcquisitionMode', 'Continuous') # must be continuous for external frame trigger
+    set_value(nodemap, 'AcquisitionMode', 'SingleFrame') # must be continuous for external frame trigger
     set_value(nodemap, 'AcquisitionStatusSelector', 'FrameTriggerWait')
     # set_value(nodemap, 'AcquisitionBurstFrameCount', 1)
     set_value(nodemap, 'LineSelector', linestr)

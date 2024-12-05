@@ -109,28 +109,59 @@ class FLIR():
     def configure_camera_for_trigger(self):
         # try:
 
+        # Set acquisition mode to single frame
+        self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_SingleFrame)
+
         # Set the camera to use an external trigger
-        self.camera.TriggerMode.SetValue(PySpin.TriggerMode_Off)
-        self.camera.TriggerSource.SetValue(PySpin.TriggerSource_Line0)  # Line 0 for external trigger
+        # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_Off)
         self.camera.TriggerMode.SetValue(PySpin.TriggerMode_On)
+        self.camera.TriggerSource.SetValue(PySpin.TriggerSource_Line0)  # Line 0 for external trigger
+        # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_On)
+        self.camera.TriggerActivation.SetValue(PySpin.TriggerActivation_FallingEdge)
 
         # Set trigger overlap if required (e.g., for hardware overlap)
         # if PySpin.TriggerOverlap_Active != -1:
         #     self.camera.TriggerOverlap.SetValue(PySpin.TriggerOverlap_Active)
-        self.camera.TriggerOverlap.SetValue(PySpin.TriggerOverlap_ReadOut)
-            
-
-        # Set acquisition mode to single frame
-        self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_SingleFrame)
-        
+        # self.camera.TriggerOverlap.SetValue(PySpin.TriggerOverlap_ReadOut)
+                    
         # Adjust other camera settings (exposure, gain, etc.) as needed
-        self.camera.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
-        self.camera.ExposureTime.SetValue(5000)  # example exposure time in microseconds
+        # self.camera.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
+        # self.camera.ExposureTime.SetValue(5000)  # example exposure time in microseconds
         
         self.logger.info(f"FLIR {self.cam_id}: Camera configured for external trigger.")
         # except PySpin.SpinnakerException as e:
         #     self.logger.info(f"FLIR {self.cam_id}: Error: {e}")
 
+    def configure_trigger(self):
+        """
+        Configures the camera for hardware triggering.
+        """
+        try:
+            nodemap = self.camera.GetNodeMap()
+
+            # Set trigger mode to On
+            trigger_mode = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerMode"))
+            trigger_mode.SetIntValue(trigger_mode.GetEntryByName("On").GetValue())
+
+            # Set trigger source to hardware (Line3 (Green cable) for example)
+            trigger_source = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerSource"))
+            trigger_source.SetIntValue(trigger_source.GetEntryByName("Line3").GetValue())
+
+            # Set trigger overlap to ReadOut (optional)
+            trigger_overlap = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerOverlap"))
+            if trigger_overlap:
+                trigger_overlap.SetIntValue(trigger_overlap.GetEntryByName("ReadOut").GetValue())
+
+            acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionMode"))
+            acquisition_mode.SetIntValue(acquisition_mode.GetEntryByName("Continuous").GetValue())
+
+            trigger_activation = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerActivation"))
+            trigger_activation.SetIntValue(trigger_activation.GetEntryByName("RisingEdge").GetValue())
+
+            print("Trigger configured successfully.")
+        except PySpin.SpinnakerException as e:
+            print(f"Error configuring trigger: {e}")
+            
     def update_settings(self):
         # node_acquisition_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
         # if not str_to_bool(self.args.trigger_with_arduino):
@@ -142,8 +173,9 @@ class FLIR():
                 continue
             pg.set_value(self.nodemap, key, value)
         if str_to_bool(self.args.trigger_with_arduino):
-            pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
+            # pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
             # self.configure_camera_for_trigger()
+            self.configure_trigger()
             # self.set_hw_trigger()
             # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
         
@@ -370,9 +402,9 @@ class FLIR():
                         # print("Breaking...")
                         break
 
-                    if self.cam['options']['AcquisitionMode'] == 'SingleFrame':
-                        self.camera.EndAcquisition()
-                        self.camera.BeginAcquisition()
+                    # if self.cam['options']['AcquisitionMode'] == 'SingleFrame':
+                    #     self.camera.EndAcquisition()
+                    #     self.camera.BeginAcquisition()
 
         except KeyboardInterrupt:
             self.logger.info(f"FLIR {self.cam_id}: Keyboard interrupt detected.")
