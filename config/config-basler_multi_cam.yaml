@@ -1,49 +1,51 @@
 savedir: data
 cams:
   ######### cfg for basler cam
-  # basler_0:
-  #   type: Basler
-  #   master: True
-  #   serial: 24516213
-  #   # set options to none to use default
-  #   options:
-  #     # note: modify these at your own risk! don't change the order!
-  #     # many have dependencies that are hard to figure out, so order matters.
-  #     # for ex., exposureauto must be off before exposuretime can be changed. 
-  #     AcquisitionMode: 'Continuous' # can capture one frame or multiple frames as well
-  #     ExposureAuto: 'Off' # manually set exposure
-  #     ExposureMode: 'Timed'
-  #     ExposureTime: 4000.0 #68290.0 #1000.0 # in microseconds, so 1000 = 1ms
-  #     # if can't change binninghorizontal, change binvertical 
-  #     # binningvertical
-  #     BinningVerticalMode: 'Average'
-  #     BinningHorizontalMode: 'Average'
-  #     BinningVertical: 1
-  #     BinningHorizontal: 1
-  #     Width: 1280 # 504 w/ binning 4 #680 #1024 # max 1280 if binning=1, else 640
-  #     Height: 1280 # 384 w/ binning 4 #512 #768 # max 1024 if binning=1, else 512
-  #     # OffsetX: 0 # left value of roi
-  #     # OffsetY: 0 # top value of roi
-  #     CenterX: True
-  #     CenterY: True
-  #     PixelFormat: Mono8
-  #     AcquisitionFrameRateEnable: False # False if external HW trigger, True for SW trigger
-  #     AcquisitionFrameRate: 120.0
-  #     GainAuto: 'Off'
-  #     Gain: 0.0
-  #     Gamma: 0.5
-  #     #SharpnessAuto: 'Off'
-  #   strobe:
-  #     line: 3 #3
-  #     duration: 0.0
-  #     trigger_selector: 'FrameStart'
-  #     line_output: 4
-  #     line_source: 'ExposureActive'
+  basler_0:
+    type: Basler
+    master: True
+    use: False
+    serial: 24516213
+    # set options to none to use default
+    options:
+      # note: modify these at your own risk! don't change the order!
+      # many have dependencies that are hard to figure out, so order matters.
+      # for ex., exposureauto must be off before exposuretime can be changed. 
+      AcquisitionMode: 'Continuous' # can capture one frame or multiple frames as well
+      ExposureAuto: 'Off' # manually set exposure
+      ExposureMode: 'Timed'
+      ExposureTime: 4000.0 #68290.0 #1000.0 # in microseconds, so 1000 = 1ms
+      # if can't change binninghorizontal, change binvertical 
+      # binningvertical
+      BinningVerticalMode: 'Average'
+      BinningHorizontalMode: 'Average'
+      BinningVertical: 1
+      BinningHorizontal: 1
+      Width: 1280 # 504 w/ binning 4 #680 #1024 # max 1280 if binning=1, else 640
+      Height: 1280 # 384 w/ binning 4 #512 #768 # max 1024 if binning=1, else 512
+      # OffsetX: 0 # left value of roi
+      # OffsetY: 0 # top value of roi
+      CenterX: True
+      CenterY: True
+      PixelFormat: Mono8
+      AcquisitionFrameRateEnable: False # False if external HW trigger, True for SW trigger
+      AcquisitionFrameRate: 120.0
+      GainAuto: 'Off'
+      Gain: 0.0
+      Gamma: 0.5
+      #SharpnessAuto: 'Off'
+    strobe:
+      line: 3 #3
+      duration: 0.0
+      trigger_selector: 'FrameStart'
+      line_output: 4
+      line_source: 'ExposureActive'
   
   ######### cfg for flir cam
   flir_0:
     type: FLIR
     master: True
+    use: True
     serial: 23386795
     options:
       AcquisitionMode: 'Continuous' # [SingleFrame, Continuous, MultiFrame]
@@ -59,9 +61,9 @@ cams:
       AcquisitionFrameRate: 120.0
       GainAuto: 'Off'
       Gain: 0.0
-    strobe:
-      line: 0
-      duration: 0.0
+    # strobe:
+    #   line: 0
+    #   duration: 0.0
 
 
 

@@ -156,6 +156,8 @@ def main():
     tuple_list=[]
     pwm_fps = None
     for camname, cam in config['cams'].items():
+        if not cam['use']:
+            continue
         logger.info(f'camname: {camname} \n cam: {cam}')
         pprint.pprint(cam)
         if cam['master']:

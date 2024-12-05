@@ -15,9 +15,9 @@ The program utilizes threading capabilities of Python to run tasks concurrently 
 
 ### Hardware
 
-1. Connect Basler USB 3.0 to the computer.
+1. Connect Basler USB 3.0 and/or FLIR GS3-U3 to the computer.
 
-Optional Steps for hardware trigger:
+Optional Steps for the hardware trigger:
 
 2. Connect:
     - Pin 3 of Arduino with Pin 1 (Brown cable) of the Basler, and Pin 4 (Green cable) of the FLIR GS3-U3.
@@ -28,6 +28,8 @@ Optional Steps for hardware trigger:
 4. Connect Arduino to the computer via USB.
 
 ### Set Arduino access rights
+
+Do the following if using Arduino for the first time on Linux.
 
 ```bash
 # navigate to rules.d directory
@@ -45,12 +47,12 @@ Restart the computer for the access rights to take effect.
 
 You can create a new environment before installing the necessary dependencies.
 
-`conda create -n <your_env_name> python=3.9`
+`conda create -n <your_env_name> python=3.10`
 
 Intall the dependencies via:
 
 ```bash
-cd basler_arduino-main
+cd basler_arduino
 pip install -r requirements.txt
 ```
 
