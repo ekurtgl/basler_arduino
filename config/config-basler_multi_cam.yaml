@@ -3,8 +3,12 @@ cams:
   ######### cfg for basler cam
   basler_0:
     type: Basler
-    master: True
+    master: False
     use: False
+    preview: False
+    predict: True
+    preview_predict: True
+    pred_preview_toggle_button: 'b'
     serial: 24516213
     # set options to none to use default
     options:
@@ -46,6 +50,10 @@ cams:
     type: FLIR
     master: True
     use: True
+    preview: True
+    predict: True
+    preview_predict: True
+    pred_preview_toggle_button: 'f'
     serial: 23386795
     options:
       AcquisitionMode: 'Continuous' # [SingleFrame, Continuous, MultiFrame]

@@ -39,9 +39,9 @@ def initialize_and_loop(tuple_list_item, logger, report_period=10): #config, cam
     if cam['type'] == 'Realsense':
         raise NotImplementedError
     elif cam['type'] == 'FLIR':
-        device = FLIR(args, cam, experiment, config, start_t, logger, cam_id=0)
+        device = FLIR(args, cam, camname, experiment, config, start_t, logger, cam_id=0)
     elif cam['type'] == 'Basler':
-        device = Basler(args, cam, experiment, config, start_t, logger, cam_id=0)
+        device = Basler(args, cam, camname, experiment, config, start_t, logger, cam_id=0)
     else:
         raise ValueError('Invalid camera type: %s' % cam['type'])
         
@@ -57,6 +57,7 @@ def initialize_and_loop(tuple_list_item, logger, report_period=10): #config, cam
         device.close()
         logger.info(f"{camname}: Exited.")
 
+
     return f"{camname} done."
 
 def main():
@@ -65,19 +66,13 @@ def main():
         help='Base name for directories. Example: mouse ID')
     parser.add_argument('-c', '--config', type=str, default='config/config-basler_multi_cam.yaml', 
         help='Configuration for acquisition. Defines number of cameras, serial numbers, etc.')
-    parser.add_argument('-p', '--preview', default='1',
-        help='Show preview in opencv window')
-    parser.add_argument('--predict', default='1',
-        help='Make detection inference from the trained model')
-    parser.add_argument('--preview_prediction', default='1',
-        help='Show detections overlayed on preview in opencv window')
     parser.add_argument('--model_path', default='', type=str, 
         help='Path to the prediction model')
-    parser.add_argument('--stimulation_path', default='config/stimulation_config.json', type=str, # config/stimulation_config.json
+    parser.add_argument('--stimulation_path', default='', type=str, # config/stimulation_config.json
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=1680, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=1360, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
     parser.add_argument('-t', '--trigger_with_arduino', default="1",
          type=str, help='Flag to use python software trigger (instead of arduino)')
@@ -87,6 +82,12 @@ def main():
         help='Acquisition mode.')
     parser.add_argument('-w', '--videowrite_fps', default=30, type=float,
          help='Video save frame rate (default: acquisition rate)')
+    # parser.add_argument('-p', '--preview', default='1',
+    #     help='Show preview in opencv window')
+    # parser.add_argument('--predict', default='1',
+    #     help='Make detection inference from the trained model')
+    # parser.add_argument('--preview_prediction', default='1',
+    #     help='Show detections overlayed on preview in opencv window')
     
     # unused flags
     parser.add_argument('-v', '--verbose', default=False, action='store_true',

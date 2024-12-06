@@ -24,20 +24,22 @@ def threaded(fn):
 
 class FLIR():
 
-    def __init__(self, args, cam, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
+    def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
         print('Searching for camera...')
 
         self.start_t = start_t
         self.args = args
         self.cam = cam
+        self.camname = camname
         self.experiment = experiment
         self.config = config
         self.cam_id = cam_id
         self.frame_timer = None
-        self.preview = str_to_bool(self.args.preview)
+        # self.preview = str_to_bool(self.args.preview)
+        self.preview = cam['preview']
         self.save = str_to_bool(self.args.save)
-        self.predict = str_to_bool(self.args.predict)
-        self.preview_predict = str_to_bool(self.args.preview_prediction)
+        self.predict = cam['predict']
+        self.preview_predict = cam['preview_predict']
         self.clock = 1e6 # from GS3-PGE-Technical-Reference.pdf (https://www.teledynevisionsolutions.com/learn/learning-center/machine-vision/mv-getting-started/)
         
         self.vid_cod = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
@@ -59,7 +61,7 @@ class FLIR():
             self.predictor = Predictor(self.logger, self.args.model_path)
         
         if self.preview:
-            self.vid_show = VideoShow(f'FLIR {self.cam_id}', self.preview_predict, pred_preview_button='f')
+            self.vid_show = VideoShow(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'])
             self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
             if self.vid_show.show_pred:
                 self.vid_show.pred_result = self.predictor.pred_result
@@ -73,7 +75,7 @@ class FLIR():
         self.cam_list = self.system.GetCameras()
 
         if len(self.cam_list) == 0:
-            raise Exception(f'FLIR {self.cam_id} is not detected.')
+            raise Exception(f'{self.camname} is not detected.')
         
         self.camera = self.cam_list.GetBySerial(str(self.cam['serial']))
         # self.camera = self.cam_list[self.cam_id]
@@ -83,7 +85,7 @@ class FLIR():
         self.nodemap_tldevice = self.camera.GetTLDeviceNodeMap()
         self.device_serial_number = PySpin.CStringPtr(self.nodemap_tldevice.GetNode('DeviceSerialNumber')).GetValue()
         self.set_default_params()
-        self.logger.info(f'FLIR {self.cam_id} is initialized.')
+        self.logger.info(f'{self.camname} is initialized.')
     
     def set_hw_trigger(self):
         # Ensure acquisition is stopped before changing settings
@@ -104,7 +106,7 @@ class FLIR():
         # Enable trigger mode
         self.camera.TriggerMode.SetValue(PySpin.TriggerMode_On)
 
-        self.logger.info(f"FLIR {self.cam_id}: Trigger configured successfully.")
+        self.logger.info(f"{self.camname}: Trigger configured successfully.")
 
     def configure_camera_for_trigger(self):
         # try:
@@ -128,7 +130,7 @@ class FLIR():
         # self.camera.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
         # self.camera.ExposureTime.SetValue(5000)  # example exposure time in microseconds
         
-        self.logger.info(f"FLIR {self.cam_id}: Camera configured for external trigger.")
+        self.logger.info(f"{self.camname}: Camera configured for external trigger.")
         # except PySpin.SpinnakerException as e:
         #     self.logger.info(f"FLIR {self.cam_id}: Error: {e}")
 
@@ -158,9 +160,9 @@ class FLIR():
             trigger_activation = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerActivation"))
             trigger_activation.SetIntValue(trigger_activation.GetEntryByName("RisingEdge").GetValue())
 
-            print("Trigger configured successfully.")
+            self.logger.info(f"{self.camname}: Trigger configured successfully.")
         except PySpin.SpinnakerException as e:
-            print(f"Error configuring trigger: {e}")
+            self.logger.info(f"{self.camname}: Error configuring trigger: {e}")
             
     def update_settings(self):
         # node_acquisition_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
@@ -240,8 +242,8 @@ class FLIR():
         width = self.camera.Width.GetValue()
         height = self.camera.Height.GetValue()
 
-        self.logger.info(f'FLIR {self.cam_id}: width: {width}, height: {height}')
-        self.logger.info(f'FLIR {self.cam_id} settings updated.')
+        self.logger.info(f'{self.camname}: width: {width}, height: {height}')
+        self.logger.info(f'{self.camname}: settings updated.')
     
     def set_default_params(self):
         self.logger.info(f"FLIR {self.cam_id}: Setting default params...")
@@ -267,7 +269,7 @@ class FLIR():
         self.nodemap = self.camera.GetNodeMap()
         self.device_serial_number = PySpin.CStringPtr(self.nodemap_tldevice.GetNode('DeviceSerialNumber')).GetValue()
 
-        self.logger.info(f"FLIR {self.cam_id} reconnected.")
+        self.logger.info(f"{self.camname} reconnected.")
 
     def close(self):
         
@@ -280,7 +282,7 @@ class FLIR():
         chosenAviType = AviType.MJPG  # change me!
 
         self.avi_recorder = PySpin.SpinVideo()
-        avi_filename = os.path.join(self.config['savedir'], self.experiment, f"video_flir_{self.cam_id}")
+        avi_filename = os.path.join(self.config['savedir'], self.experiment, f"video_{self.camname}")
 
         if chosenAviType == AviType.UNCOMPRESSED:
             option = PySpin.AVIOption()
@@ -302,7 +304,7 @@ class FLIR():
         #                             (self.cam['options']['Width'], self.cam['options']['Height']))
         self.write_frames = True
         self.frame_write_queue = Queue()
-        self.frame_writer()
+        self.fram_writer_future = self.frame_writer()
     
     @threaded
     def frame_writer(self):
@@ -310,10 +312,13 @@ class FLIR():
             if self.frame_write_queue.empty():
                 continue
             self.avi_recorder.Append(self.frame_write_queue.get_nowait())
+        
+        while not self.frame_write_queue.empty():
+            self.avi_recorder.Append(self.frame_write_queue.get_nowait())
 
     def save_vid_metadata(self, metadata=None):
         if metadata is not None:
-            with open(os.path.join(self.config['savedir'], self.experiment, f'metadata_flir_{self.cam_id}.json'), 'w') as file:
+            with open(os.path.join(self.config['savedir'], self.experiment, f'metadata_{self.camname}.json'), 'w') as file:
                 json.dump(metadata, file)
         # self.writer_obj.release()
         self.avi_recorder.Close()
@@ -325,7 +330,7 @@ class FLIR():
     def get_n_frames(self, n_frames, timeout_time=1000, report_period=10):
 
         # print(f"Started cam {self.name} acquisition")
-        self.logger.info(f"FLIR {self.cam_id}: Started acquisition")
+        self.logger.info(f"{self.camname}: Started acquisition.")
         self.start_timer = time.perf_counter()
 
         self.camera.BeginAcquisition()
@@ -344,13 +349,13 @@ class FLIR():
 
                 if self.nframes % round(report_period * self.cam['options']['AcquisitionFrameRate']) == 0:
                     # print("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
-                    self.logger.info("FLIR %d: [fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam_id, self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
+                    self.logger.info("%s: [fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.camname, self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
 
                 image_result = self.camera.GetNextImage(timeout_time) # timeout_time == buffer size, for the arg name consistency
 
                 #  Ensure image completion
                 if image_result.IsIncomplete():
-                    self.logger.info(f'FLIR {self.cam_id}: incomplete with image status %d ...' % image_result.GetImageStatus())
+                    self.logger.info(f'{self.camname}: incomplete with image status %d ...' % image_result.GetImageStatus())
                     continue
                 else:
                     if self.nframes == 0:
@@ -398,7 +403,7 @@ class FLIR():
                     if self.nframes >= n_frames:
                         if self.preview:
                             self.vid_show.stop()
-                        self.logger.info(f"FLIR {self.cam_id}: Breaking...")
+                        self.logger.info(f"{self.camname}: Breaking...")
                         # print("Breaking...")
                         break
 
@@ -407,9 +412,10 @@ class FLIR():
                     #     self.camera.BeginAcquisition()
 
         except KeyboardInterrupt:
-            self.logger.info(f"FLIR {self.cam_id}: Keyboard interrupt detected.")
+            self.logger.info(f"{self.camname}: Keyboard interrupt detected.")
 
         finally:
+            self.logger.info(f'{self.camname}: Ending acquisition.')
             self.camera.EndAcquisition()
             if self.preview:
                 self.vid_show.stop()
@@ -418,8 +424,9 @@ class FLIR():
             if self.save:
                 self.write_frames = False
                 self.save_vid_metadata(metadata)
-            self.logger.info(f'FLIR {self.cam_id}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
-            self.logger.info(f'FLIR {self.cam_id}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+                self.fram_writer_future.result()
+            self.logger.info(f'{self.camname}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            self.logger.info(f'{self.camname}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             
 
 class AviType:

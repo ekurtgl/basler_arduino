@@ -24,29 +24,31 @@ def threaded(fn):
 
 class Basler():
 
-    def __init__(self, args, cam, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
+    def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
 
         self.start_t = start_t
         self.args = args
         self.cam = cam
+        self.camname = camname
         self.experiment = experiment
         self.config = config
         self.cam_id = cam_id
         self.frame_timer = None
-        self.preview = str_to_bool(self.args.preview)
+        # self.preview = str_to_bool(self.args.preview)
+        self.preview = cam['preview']
         self.save = str_to_bool(self.args.save)
-        self.predict = str_to_bool(self.args.predict)
-        self.preview_predict = str_to_bool(self.args.preview_prediction)
+        self.predict = cam['predict']
+        self.preview_predict = cam['preview_predict']
         self.logger = logger
         cameras = None
         # get transport layer factory
         self.tlFactory = pylon.TlFactory.GetInstance()
         # get the camera list 
-        self.logger.info(f'Basler {self.cam_id}: Searching for camera...')
+        self.logger.info(f'{self.camname}: Searching for camera...')
         self.devices = self.tlFactory.EnumerateDevices()
         self.vid_cod = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
         self.nframes = 0
-        self.logger.info(f'Basler {self.cam_id}: Connecting to the Basler camera...')
+        self.logger.info(f'{self.camname}: Connecting to the Basler camera...')
         # print('Connecting to the camera...')
 
         n = 0
@@ -58,13 +60,13 @@ class Basler():
                 # self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
                 # print(dir(self.camera))
                 # self.camera.MaxNumBuffer.Value = 20
-                self.logger.info(f"Basler {self.cam_id}: Num. of cameras detected: {cameras.GetSize()}, selected cam_ID: {cam_id}")
+                self.logger.info(f"{self.camname}: Num. of cameras detected: {cameras.GetSize()}, selected cam_ID: {cam_id}")
                 # print(f"Num. of cameras detected: {cameras.GetSize()}, selected cam_ID: {cam_id}")
                 self.init_camera()
 
             except Exception as e:
                 # self.logger.info(f'Trying to detect camera, trial {n}/{connect_retries}...')
-                print(f'Basler {self.cam_id}: Trying to detect camera, trial {n}/{connect_retries}...')
+                self.logger.info(f'{self.camname}: Trying to detect camera, trial {n}/{connect_retries}...')
                 time.sleep(0.1)
                 cameras = None
                 n += 1
@@ -80,15 +82,15 @@ class Basler():
         #     self.camera.Width.Value = new_width
         self.camera.MaxNumBuffer.Value = int(self.cam['options']['AcquisitionFrameRate'])
         self.name = self.camera.GetDeviceInfo().GetModelName()
-        self.logger.info(f"Cam {self.cam_id}, name: {self.name}, serial: {self.camera.DeviceInfo.GetSerialNumber()}")
+        self.logger.info(f"{self.camname}, name: {self.name}, serial: {self.camera.DeviceInfo.GetSerialNumber()}")
         # print(f"Cam {self.cam_id}, name: {self.name}, serial: {self.camera.DeviceInfo.GetSerialNumber()}")
         # self.camera.SetCameraContext(self.cam_id)
-        self.logger.info(f"Camera {self.cam_id} [{self.name}] successfully initialized!")
+        self.logger.info(f"{self.camname}: successfully initialized!")
         # print(f"Camera {self.cam_id} [{self.name}] successfully initialized!")
         self.nodemap = self.camera.GetNodeMap()
         self.strobe = self.cam['strobe']
         if self.save:
-            pylon.FeaturePersistence.Save(os.path.join(self.config['savedir'], self.experiment, "nodemap.txt"), self.nodemap)
+            pylon.FeaturePersistence.Save(os.path.join(self.config['savedir'], self.experiment, f"{self.camname}_nodemap.txt"), self.nodemap)
         self.update_settings()
         # pylon.FeaturePersistence.Load("config/acA2040-120um_24516213.pfs", self.nodemap, True)
         
@@ -101,7 +103,7 @@ class Basler():
             # self.predictor.start()
 
         if self.preview:
-            self.vid_show = VideoShow(self.name, self.preview_predict)
+            self.vid_show = VideoShow(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'])
             self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
             if self.vid_show.show_pred:
                 self.vid_show.pred_result = self.predictor.pred_result
@@ -114,7 +116,7 @@ class Basler():
         self.camera.Close()
 
     def init_video_writer(self):
-        self.writer_obj = cv2.VideoWriter(os.path.join(self.config['savedir'], self.experiment, f"video_basler_{self.cam_id}.mp4"), self.vid_cod, self.args.videowrite_fps,
+        self.writer_obj = cv2.VideoWriter(os.path.join(self.config['savedir'], self.experiment, f"video_{self.camname}.mp4"), self.vid_cod, self.args.videowrite_fps,
                                     (self.cam['options']['Width'], self.cam['options']['Height']))
         self.write_frames = True
         self.frame_write_queue = Queue()
@@ -258,7 +260,7 @@ class Basler():
             self.camera.StartGrabbingMax(n_frames)
 
         # print(f"Started cam {self.name} acquisition")
-        self.logger.info(f"Basler {self.cam_id}: Started acquisition")
+        self.logger.info(f"{self.camname}: Started acquisition")
         self.start_timer = time.perf_counter()
 
         # self.logger.info("Looping - %s" % self.name)
@@ -267,9 +269,9 @@ class Basler():
         try:
             if self.camera.GetGrabResultWaitObject().Wait(0):
                 # print("grab results waiting")
-                self.logger.info(f"Basler {self.cam_id}: grab results waiting")
+                self.logger.info(f"{self.camname}: grab results waiting")
 
-            self.logger.info(f'Basler {self.cam_id}: Checking for results')
+            self.logger.info(f'{self.camname}: Checking for results')
             # print('Checking for results')
             last_report = 0
 
@@ -277,7 +279,7 @@ class Basler():
                 elapsed_pre = time.perf_counter() - self.start_timer #exp_start_tim     
                 if round(elapsed_pre) % 5 == 0 and round(elapsed_pre) != last_report:
                     # print("...waiting grabbing", round(elapsed_pre))
-                    self.logger.info(f"Basler {self.cam_id}: ...waiting grabbing", round(elapsed_pre))
+                    self.logger.info(f"{self.camname}: ...waiting grabbing", round(elapsed_pre))
                     
                 last_report = round(elapsed_pre)
 
@@ -291,13 +293,13 @@ class Basler():
 
                 if self.nframes % round(report_period * self.cam['options']['AcquisitionFrameRate']) == 0:
                     # print("[fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
-                    self.logger.info("Basler %d: [fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.cam_id, self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
+                    self.logger.info("%s: [fps %.2f] grabbing (%ith frame) | elapsed %.2f" % (self.camname, self.cam['options']['AcquisitionFrameRate'], self.nframes, elapsed_time))
 
                 image_result = self.camera.RetrieveResult(timeout_time, pylon.TimeoutHandling_Return) #, pylon.TimeoutHandling_ThrowException)
                 #if (image_result.GetNumberOfSkippedImages()):
                 #    print("Skipped ", image_result.GetNumberOfSkippedImages(), " image.")
                 if image_result is None and int(elapsed_time) % 5 == 0: #not image_result.GrabSucceeded():
-                    self.logger.info(f"Basler {self.cam_id}:... waiting frame")
+                    self.logger.info(f"{self.camname}:... waiting frame")
                     # print("... waiting frame")
                     continue
 
@@ -342,12 +344,12 @@ class Basler():
                     if self.nframes >= n_frames:
                         if self.preview:
                             self.vid_show.stop()
-                        self.logger.info(f"Basler {self.cam_id}: Breaking...")
+                        self.logger.info(f"{self.camname}: Breaking...")
                         # print("Breaking...")
                         break 
 
         except KeyboardInterrupt:
-            self.logger.info(f"Basler {self.cam_id}: Keyboard interrupt detected.")
+            self.logger.info(f"{self.camname}: Keyboard interrupt detected.")
             # print("ABORT loop")
             
         finally:
@@ -359,8 +361,8 @@ class Basler():
             if self.save:
                 self.write_frames = False
                 self.save_vid_metadata(metadata)
-            self.logger.info(f'Basler {self.cam_id}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
-            self.logger.info(f'Basler {self.cam_id}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+            self.logger.info(f'{self.camname}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            self.logger.info(f'{self.camname}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
             # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
     
@@ -373,7 +375,7 @@ class Basler():
 
     def save_vid_metadata(self, metadata=None):
         if metadata is not None:
-            with open(os.path.join(self.config['savedir'], self.experiment, f'metadata_basler_{self.cam_id}.json'), 'w') as file:
+            with open(os.path.join(self.config['savedir'], self.experiment, f'metadata_{self.camname}.json'), 'w') as file:
                 json.dump(metadata, file)
                 # with open(os.path.join(self.config['savedir'], self.experiment, f'metadata.pickle'), 'wb') as file:
                 #     pickle.dump(metadata, file, pickle.HIGHEST_PROTOCOL)
