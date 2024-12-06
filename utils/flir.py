@@ -423,8 +423,8 @@ class FLIR():
                 self.predictor.stop()
             if self.save:
                 self.write_frames = False
-                self.save_vid_metadata(metadata)
                 self.fram_writer_future.result()
+                self.save_vid_metadata(metadata)
             self.logger.info(f'{self.camname}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
             self.logger.info(f'{self.camname}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             
