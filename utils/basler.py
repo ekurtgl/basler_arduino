@@ -120,7 +120,7 @@ class Basler():
                                     (self.cam['options']['Width'], self.cam['options']['Height']))
         self.write_frames = True
         self.frame_write_queue = Queue()
-        self.frame_writer()
+        self.fram_writer_future = self.frame_writer()
     
     def convert_image(self, grabResult):
         return self.converter.Convert(grabResult).GetArray()
@@ -354,15 +354,19 @@ class Basler():
             
         finally:
             
+            self.logger.info(f'{self.camname}: Ended acquisition.')
+            self.logger.info(f'{self.camname}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            self.logger.info(f'{self.camname}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             if self.preview:
                 self.vid_show.stop()
             if self.predict:
                 self.predictor.stop()
             if self.save:
+                self.logger.info(f'{self.camname}: Saving queued frames...')
                 self.write_frames = False
+                self.fram_writer_future.result()
                 self.save_vid_metadata(metadata)
-            self.logger.info(f'{self.camname}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
-            self.logger.info(f'{self.camname}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+                self.logger.info(f'{self.camname}: Finished saving queued frames.')
             # print(f'Elapsed time (time.perf_counter()) for processing {n_frames} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
             # print(f'Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
     
@@ -371,6 +375,9 @@ class Basler():
         while self.write_frames:
             if self.frame_write_queue.empty():
                 continue
+            self.writer_obj.write(self.frame_write_queue.get_nowait())
+
+        while not self.frame_write_queue.empty():
             self.writer_obj.write(self.frame_write_queue.get_nowait())
 
     def save_vid_metadata(self, metadata=None):

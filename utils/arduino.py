@@ -40,7 +40,7 @@ class Arduino():
             #     if recv == '':
             #         continue
                 
-            self.logger.info("Received msg from arduino: {}".format(recv))
+            self.logger.info("Arduino: {}".format(recv))
         
     def close(self):
         self.continuous_listen = False

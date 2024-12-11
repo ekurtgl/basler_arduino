@@ -3,6 +3,7 @@ import cv2
 import json
 import time
 import PySpin
+import pprint
 import numpy as np
 import utils.pointgrey_utils as pg
 from datetime import datetime
@@ -112,14 +113,18 @@ class FLIR():
         # try:
 
         # Set acquisition mode to single frame
-        self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_SingleFrame)
+        self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
 
         # Set the camera to use an external trigger
         # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_Off)
+        self.camera.TriggerMode.SetValue(PySpin.TriggerSelector_FrameStart)
         self.camera.TriggerMode.SetValue(PySpin.TriggerMode_On)
-        self.camera.TriggerSource.SetValue(PySpin.TriggerSource_Line0)  # Line 0 for external trigger
+        self.camera.TriggerSource.SetValue(PySpin.TriggerSource_Line3)
+        self.camera.TriggerActivation.SetValue(PySpin.TriggerActivation_RisingEdge)
+        self.camera.TriggerOverlap.SetValue(PySpin.TriggerOverlap_ReadOut)
+        self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
+        self.camera.AcquisitionStatusSelector.SetValue(PySpin.AcquisitionStatusSelector_FrameTriggerWait)
         # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_On)
-        self.camera.TriggerActivation.SetValue(PySpin.TriggerActivation_FallingEdge)
 
         # Set trigger overlap if required (e.g., for hardware overlap)
         # if PySpin.TriggerOverlap_Active != -1:
@@ -141,24 +146,39 @@ class FLIR():
         try:
             nodemap = self.camera.GetNodeMap()
 
+            # set trigger selector
+            trigger_selector = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerSelector"))
+            trigger_selector.SetIntValue(trigger_selector.GetEntryByName("FrameStart").GetValue())
+
             # Set trigger mode to On
             trigger_mode = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerMode"))
             trigger_mode.SetIntValue(trigger_mode.GetEntryByName("On").GetValue())
 
-            # Set trigger source to hardware (Line3 (Green cable) for example)
             trigger_source = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerSource"))
             trigger_source.SetIntValue(trigger_source.GetEntryByName("Line3").GetValue())
 
+            trigger_activation = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerActivation"))
+            trigger_activation.SetIntValue(trigger_activation.GetEntryByName("RisingEdge").GetValue())
+
             # Set trigger overlap to ReadOut (optional)
             trigger_overlap = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerOverlap"))
-            if trigger_overlap:
-                trigger_overlap.SetIntValue(trigger_overlap.GetEntryByName("ReadOut").GetValue())
+            trigger_overlap.SetIntValue(trigger_overlap.GetEntryByName("ReadOut").GetValue())
 
+            # Ensure frame rate control is disabled
+            frame_rate_enable = PySpin.CBooleanPtr(nodemap.GetNode("AcquisitionFrameRateEnable"))
+            if PySpin.IsAvailable(frame_rate_enable) and PySpin.IsWritable(frame_rate_enable):
+                frame_rate_enable.SetValue(False)
+                
+            pg.set_value(nodemap, 'ExposureMode', self.cam['options']['ExposureMode'])
+            pg.set_value(nodemap, 'ExposureAuto', self.cam['options']['ExposureAuto'])
+            pg.set_value(nodemap, 'ExposureTime', self.cam['options']['ExposureTime'])
+            
             acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionMode"))
             acquisition_mode.SetIntValue(acquisition_mode.GetEntryByName("Continuous").GetValue())
 
-            trigger_activation = PySpin.CEnumerationPtr(nodemap.GetNode("TriggerActivation"))
-            trigger_activation.SetIntValue(trigger_activation.GetEntryByName("RisingEdge").GetValue())
+            # set trigger selector
+            acq_status_selector = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionStatusSelector"))
+            acq_status_selector.SetIntValue(acq_status_selector.GetEntryByName("FrameTriggerWait").GetValue())
 
             self.logger.info(f"{self.camname}: Trigger configured successfully.")
         except PySpin.SpinnakerException as e:
@@ -169,17 +189,18 @@ class FLIR():
         # if not str_to_bool(self.args.trigger_with_arduino):
         #     self.reset()
         # else:
-        for key, value in self.cam['options'].items():
-        # for key, value in options.items():
-            if key == 'AcquisitionFrameRate':
-                continue
-            pg.set_value(self.nodemap, key, value)
         if str_to_bool(self.args.trigger_with_arduino):
             # pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
-            # self.configure_camera_for_trigger()
-            self.configure_trigger()
+            self.configure_camera_for_trigger()
+            # self.configure_trigger()
             # self.set_hw_trigger()
             # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
+        for key, value in self.cam['options'].items():
+        # for key, value in options.items():
+            # if key in ['AcquisitionFrameRate', 'AcquisitionFrameRateAuto', 'AcquisitionMode']:
+            #     continue
+            if key in ['Height', 'Width']:
+                pg.set_value(self.nodemap, key, value)
         
         # if str_to_bool(self.args.trigger_with_arduino):
         #     # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
@@ -229,22 +250,56 @@ class FLIR():
         # self.camera.Height.SetValue(self.cam['options']['Height'])
         
         # disable auto frame rate
+
         if not str_to_bool(self.args.trigger_with_arduino):
             node_frame_rate_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode("AcquisitionFrameRateAuto"))
             node_frame_rate_auto_off = node_frame_rate_auto.GetEntryByName("Off")
             frame_rate_auto_off = node_frame_rate_auto_off.GetValue()
             node_frame_rate_auto.SetIntValue(frame_rate_auto_off)
-
             node_frame_rate_enable = PySpin.CBooleanPtr(self.nodemap.GetNode("AcquisitionFrameRateEnabled"))
             node_frame_rate_enable.SetValue(True)
             self.camera.AcquisitionFrameRate.SetValue(self.cam['options']['AcquisitionFrameRate'])
+        # else:
+        #     node_frame_rate_enable = PySpin.CBooleanPtr(self.nodemap.GetNode("AcquisitionFrameRateEnabled"))
+        #     node_frame_rate_enable.SetValue(False)
         
         width = self.camera.Width.GetValue()
         height = self.camera.Height.GetValue()
 
         self.logger.info(f'{self.camname}: width: {width}, height: {height}')
+        # self.updated_nodemap = self.camera.GetNodeMap()
+        # pprint.pprint(self.updated_nodemap)
+        # print_device_info(self.camera)
+        # self.print_all_camera_settings()
         self.logger.info(f'{self.camname}: settings updated.')
     
+    def print_all_camera_settings(self):
+        """
+        Print all available settings of a FLIR camera using PySpin.
+        """
+        try:
+            # Access the camera's NodeMap
+            nodemap = self.camera.GetNodeMap()
+
+            self.logger.info(f"{self.camname}: All Available Camera Settings:")
+
+            # Iterate through all nodes in the NodeMap
+            for node in nodemap.GetNodes():
+                try:
+                    name = node.GetName()  # Get the name of the setting
+                    if PySpin.IsReadable(node):  # Check if the node is readable
+                        value = node.ToString()
+                    else:
+                        value = "Not readable"
+                    print(f"  {name}: {value}")
+                except PySpin.SpinnakerException as e:
+                    print(f"  {node.GetName()}: Error - {e}")
+                except AttributeError:
+                    continue  # Skip nodes that don't have the expected attributes
+
+        except PySpin.SpinnakerException as e:
+            self.logger.info(f"{self.camname}: Error: {e}")
+            
     def set_default_params(self):
         self.logger.info(f"FLIR {self.cam_id}: Setting default params...")
         self.camera.UserSetSelector.SetValue(PySpin.UserSetSelector_Default)
@@ -273,9 +328,14 @@ class FLIR():
 
     def close(self):
         
-        self.camera.DeInit()
-        self.cam_list.Clear()
-        self.system.ReleaseInstance()
+        try:
+            self.camera.DeInit()
+            self.cam_list.Clear()
+            system = PySpin.System.GetInstance()
+            system.ReleaseInstance()
+            self.logger.info(f"{self.camname}: Closed.")
+        except PySpin.SpinnakerException as e:
+            self.logger.info(f"{self.camname}: Error during cleanup: {e}")
     
     def init_video_writer(self):
 
@@ -326,7 +386,7 @@ class FLIR():
     # def compute_timestamp_offset(self):
     #     self.camera.TimestampLatch.Execute()
     #     self.timestamp_offset = time.perf_counter() - self.camera.TimestampLatchValue.GetValue()*1e-9 - self.start_t
-
+            
     def get_n_frames(self, n_frames, timeout_time=1000, report_period=10):
 
         # print(f"Started cam {self.name} acquisition")
@@ -415,18 +475,20 @@ class FLIR():
             self.logger.info(f"{self.camname}: Keyboard interrupt detected.")
 
         finally:
-            self.logger.info(f'{self.camname}: Ending acquisition.')
             self.camera.EndAcquisition()
+            self.logger.info(f'{self.camname}: Ended acquisition.')
+            self.logger.info(f'{self.camname}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
+            self.logger.info(f'{self.camname}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
             if self.preview:
                 self.vid_show.stop()
             if self.predict:
                 self.predictor.stop()
             if self.save:
+                self.logger.info(f'{self.camname}: Saving queued frames...')
                 self.write_frames = False
                 self.fram_writer_future.result()
                 self.save_vid_metadata(metadata)
-            self.logger.info(f'{self.camname}: Elapsed time (time.perf_counter()) for processing {self.nframes} frames at {self.cam["options"]["AcquisitionFrameRate"]} FPS: {time.perf_counter() - self.frame_timer} sec.')
-            self.logger.info(f'{self.camname}: Time difference (grabResult.TimeStamp) between the first and the last frame timestamp: {(last_time_stamp - init_time_stamp) * 1e-9} sec.')
+                self.logger.info(f'{self.camname}: Finished saving queued frames.')
             
 
 class AviType:
@@ -572,96 +634,96 @@ def configure_custom_image_settings(cam):
 
     return result
 
-class TriggerType:
-    SOFTWARE = 1
-    HARDWARE = 2
+# class TriggerType:
+#     SOFTWARE = 1
+#     HARDWARE = 2
 
-def configure_trigger(cam, CHOSEN_TRIGGER):
-    """
-    This function configures the camera to use a trigger. First, trigger mode is
-    set to off in order to select the trigger source. Once the trigger source
-    has been selected, trigger mode is then enabled, which has the camera
-    capture only a single image upon the execution of the chosen trigger.
+# def configure_trigger(cam, CHOSEN_TRIGGER):
+#     """
+#     This function configures the camera to use a trigger. First, trigger mode is
+#     set to off in order to select the trigger source. Once the trigger source
+#     has been selected, trigger mode is then enabled, which has the camera
+#     capture only a single image upon the execution of the chosen trigger.
 
-     :param cam: Camera to configure trigger for.
-     :type cam: CameraPtr
-     :return: True if successful, False otherwise.
-     :rtype: bool
-    """
-    result = True
+#      :param cam: Camera to configure trigger for.
+#      :type cam: CameraPtr
+#      :return: True if successful, False otherwise.
+#      :rtype: bool
+#     """
+#     result = True
 
-    # try:
-    # Ensure trigger mode off
-    # The trigger must be disabled in order to configure whether the source
-    # is software or hardware.
-    nodemap = cam.GetNodeMap()
-    node_trigger_mode = PySpin.CEnumerationPtr(nodemap.GetNode('TriggerMode'))
-    if not PySpin.IsReadable(node_trigger_mode) or not PySpin.IsWritable(node_trigger_mode):
-        print('Unable to disable trigger mode (node retrieval). Aborting...')
-        return False
+#     # try:
+#     # Ensure trigger mode off
+#     # The trigger must be disabled in order to configure whether the source
+#     # is software or hardware.
+#     nodemap = cam.GetNodeMap()
+#     node_trigger_mode = PySpin.CEnumerationPtr(nodemap.GetNode('TriggerMode'))
+#     if not PySpin.IsReadable(node_trigger_mode) or not PySpin.IsWritable(node_trigger_mode):
+#         print('Unable to disable trigger mode (node retrieval). Aborting...')
+#         return False
 
-    node_trigger_mode_off = node_trigger_mode.GetEntryByName('Off')
-    if not PySpin.IsReadable(node_trigger_mode_off):
-        print('Unable to disable trigger mode (enum entry retrieval). Aborting...')
-        return False
+#     node_trigger_mode_off = node_trigger_mode.GetEntryByName('Off')
+#     if not PySpin.IsReadable(node_trigger_mode_off):
+#         print('Unable to disable trigger mode (enum entry retrieval). Aborting...')
+#         return False
 
-    node_trigger_mode.SetIntValue(node_trigger_mode_off.GetValue())
+#     node_trigger_mode.SetIntValue(node_trigger_mode_off.GetValue())
 
-    print('Trigger mode disabled...')
+#     print('Trigger mode disabled...')
 
-    # Set TriggerSelector to FrameStart
-    # For this example, the trigger selector should be set to frame start.
-    # This is the default for most cameras.
-    node_trigger_selector= PySpin.CEnumerationPtr(nodemap.GetNode('TriggerSelector'))
-    if not PySpin.IsReadable(node_trigger_selector) or not PySpin.IsWritable(node_trigger_selector):
-        print('Unable to get trigger selector (node retrieval). Aborting...')
-        return False
+#     # Set TriggerSelector to FrameStart
+#     # For this example, the trigger selector should be set to frame start.
+#     # This is the default for most cameras.
+#     node_trigger_selector= PySpin.CEnumerationPtr(nodemap.GetNode('TriggerSelector'))
+#     if not PySpin.IsReadable(node_trigger_selector) or not PySpin.IsWritable(node_trigger_selector):
+#         print('Unable to get trigger selector (node retrieval). Aborting...')
+#         return False
 
-    node_trigger_selector_framestart = node_trigger_selector.GetEntryByName('FrameStart')
-    if not PySpin.IsReadable(node_trigger_selector_framestart):
-        print('Unable to set trigger selector (enum entry retrieval). Aborting...')
-        return False
-    node_trigger_selector.SetIntValue(node_trigger_selector_framestart.GetValue())
+#     node_trigger_selector_framestart = node_trigger_selector.GetEntryByName('FrameStart')
+#     if not PySpin.IsReadable(node_trigger_selector_framestart):
+#         print('Unable to set trigger selector (enum entry retrieval). Aborting...')
+#         return False
+#     node_trigger_selector.SetIntValue(node_trigger_selector_framestart.GetValue())
 
-    print('Trigger selector set to frame start...')
+#     print('Trigger selector set to frame start...')
 
-    # Select trigger source
-    # The trigger source must be set to hardware or software while trigger
-    # mode is off.
-    node_trigger_source = PySpin.CEnumerationPtr(nodemap.GetNode('TriggerSource'))
-    if not PySpin.IsReadable(node_trigger_source) or not PySpin.IsWritable(node_trigger_source):
-        print('Unable to get trigger source (node retrieval). Aborting...')
-        return False
+#     # Select trigger source
+#     # The trigger source must be set to hardware or software while trigger
+#     # mode is off.
+#     node_trigger_source = PySpin.CEnumerationPtr(nodemap.GetNode('TriggerSource'))
+#     if not PySpin.IsReadable(node_trigger_source) or not PySpin.IsWritable(node_trigger_source):
+#         print('Unable to get trigger source (node retrieval). Aborting...')
+#         return False
 
-    if CHOSEN_TRIGGER == TriggerType.SOFTWARE:
-        node_trigger_source_software = node_trigger_source.GetEntryByName('Software')
-        if not PySpin.IsReadable(node_trigger_source_software):
-            print('Unable to get trigger source (enum entry retrieval). Aborting...')
-            return False
-        node_trigger_source.SetIntValue(node_trigger_source_software.GetValue())
-        print('Trigger source set to software...')
+#     if CHOSEN_TRIGGER == TriggerType.SOFTWARE:
+#         node_trigger_source_software = node_trigger_source.GetEntryByName('Software')
+#         if not PySpin.IsReadable(node_trigger_source_software):
+#             print('Unable to get trigger source (enum entry retrieval). Aborting...')
+#             return False
+#         node_trigger_source.SetIntValue(node_trigger_source_software.GetValue())
+#         print('Trigger source set to software...')
 
-    elif CHOSEN_TRIGGER == TriggerType.HARDWARE:
-        node_trigger_source_hardware = node_trigger_source.GetEntryByName('Line0')
-        if not PySpin.IsReadable(node_trigger_source_hardware):
-            print('Unable to get trigger source (enum entry retrieval). Aborting...')
-            return False
-        node_trigger_source.SetIntValue(node_trigger_source_hardware.GetValue())
-        print('Trigger source set to hardware...')
+#     elif CHOSEN_TRIGGER == TriggerType.HARDWARE:
+#         node_trigger_source_hardware = node_trigger_source.GetEntryByName('Line0')
+#         if not PySpin.IsReadable(node_trigger_source_hardware):
+#             print('Unable to get trigger source (enum entry retrieval). Aborting...')
+#             return False
+#         node_trigger_source.SetIntValue(node_trigger_source_hardware.GetValue())
+#         print('Trigger source set to hardware...')
 
-    # Turn trigger mode on
-    # Once the appropriate trigger source has been set, turn trigger mode
-    # on in order to retrieve images using the trigger.
-    node_trigger_mode_on = node_trigger_mode.GetEntryByName('On')
-    if not PySpin.IsReadable(node_trigger_mode_on):
-        print('Unable to enable trigger mode (enum entry retrieval). Aborting...')
-        return False
+#     # Turn trigger mode on
+#     # Once the appropriate trigger source has been set, turn trigger mode
+#     # on in order to retrieve images using the trigger.
+#     node_trigger_mode_on = node_trigger_mode.GetEntryByName('On')
+#     if not PySpin.IsReadable(node_trigger_mode_on):
+#         print('Unable to enable trigger mode (enum entry retrieval). Aborting...')
+#         return False
 
-    node_trigger_mode.SetIntValue(node_trigger_mode_on.GetValue())
-    print('Trigger mode turned back on...')
+#     node_trigger_mode.SetIntValue(node_trigger_mode_on.GetValue())
+#     print('Trigger mode turned back on...')
 
-    # except PySpin.SpinnakerException as ex:
-    #     print('Error: %s' % ex)
-    #     return False
+#     # except PySpin.SpinnakerException as ex:
+#     #     print('Error: %s' % ex)
+#     #     return False
 
-    return result
+#     return result

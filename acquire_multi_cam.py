@@ -72,7 +72,7 @@ def main():
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=1360, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=600, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
     parser.add_argument('-t', '--trigger_with_arduino', default="1",
          type=str, help='Flag to use python software trigger (instead of arduino)')
@@ -155,16 +155,17 @@ def main():
     start_t = time.perf_counter()
     
     tuple_list=[]
-    pwm_fps = None
+    pwm_fps = config['recording_fps']
     for camname, cam in config['cams'].items():
         if not cam['use']:
             continue
         logger.info(f'camname: {camname} \n cam: {cam}')
+        cam['options']['AcquisitionFrameRate'] = pwm_fps
         pprint.pprint(cam)
-        if cam['master']:
-            if pwm_fps is not None:
-                raise ValueError('More than one master device detected. Set one master device in the .yaml file.')
-            pwm_fps = int(cam['options']['AcquisitionFrameRate'])
+        # if cam['master']:
+        #     if pwm_fps is not None:
+        #         raise ValueError('More than one master device detected. Set one master device in the .yaml file.')
+        #     pwm_fps = int(cam['options']['AcquisitionFrameRate'])
 
         tup = (config, camname, cam, args, experiment, start_t, trigger_with_arduino, arduino) #, serial_queue) #, arduino)
         tuple_list.append(tup)
@@ -172,8 +173,8 @@ def main():
     #     #p.start()
     
     if trigger_with_arduino:
-        if pwm_fps is None:
-            raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
+        # if pwm_fps is None:
+        #     raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
         cmd = "S,{}\r\n".format(pwm_fps)
         arduino.arduino.write(cmd.encode())
         logger.info("***Sent msg to Arduino: {} ***".format(cmd))
