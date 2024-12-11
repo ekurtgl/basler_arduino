@@ -113,7 +113,7 @@ class FLIR():
         # try:
 
         # Set acquisition mode to single frame
-        self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
+        # self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
 
         # Set the camera to use an external trigger
         # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_Off)
@@ -122,6 +122,10 @@ class FLIR():
         self.camera.TriggerSource.SetValue(PySpin.TriggerSource_Line3)
         self.camera.TriggerActivation.SetValue(PySpin.TriggerActivation_RisingEdge)
         self.camera.TriggerOverlap.SetValue(PySpin.TriggerOverlap_ReadOut)
+
+        self.camera.ExposureMode.SetValue(PySpin.ExposureMode_Timed)
+        self.camera.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
+
         self.camera.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
         self.camera.AcquisitionStatusSelector.SetValue(PySpin.AcquisitionStatusSelector_FrameTriggerWait)
         # self.camera.TriggerMode.SetValue(PySpin.TriggerMode_On)
@@ -189,18 +193,19 @@ class FLIR():
         # if not str_to_bool(self.args.trigger_with_arduino):
         #     self.reset()
         # else:
-        if str_to_bool(self.args.trigger_with_arduino):
-            # pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
-            self.configure_camera_for_trigger()
-            # self.configure_trigger()
-            # self.set_hw_trigger()
-            # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
         for key, value in self.cam['options'].items():
         # for key, value in options.items():
             # if key in ['AcquisitionFrameRate', 'AcquisitionFrameRateAuto', 'AcquisitionMode']:
             #     continue
             if key in ['Height', 'Width']:
                 pg.set_value(self.nodemap, key, value)
+        
+        if str_to_bool(self.args.trigger_with_arduino):
+            # pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
+            self.configure_camera_for_trigger()
+            # self.configure_trigger()
+            # self.set_hw_trigger()
+            # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
         
         # if str_to_bool(self.args.trigger_with_arduino):
         #     # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_Continuous)
