@@ -195,10 +195,10 @@ class FLIR():
         # else:
         for key, value in self.cam['options'].items():
         # for key, value in options.items():
-            # if key in ['AcquisitionFrameRate', 'AcquisitionFrameRateAuto', 'AcquisitionMode']:
-            #     continue
-            if key in ['Height', 'Width']:
-                pg.set_value(self.nodemap, key, value)
+            if key in ['AcquisitionFrameRate']:
+                continue
+            # if key in ['Height', 'Width']:
+            pg.set_value(self.nodemap, key, value)
         
         if str_to_bool(self.args.trigger_with_arduino):
             # pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])

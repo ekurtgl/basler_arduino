@@ -102,8 +102,8 @@ Currently, both cameras can be used but only one preview should be enabled. With
 
 The cameras can be trigger via both SW or HW (Arduino). The relevant `--config` file should be provided for either case. For the HW trigger, `--trigger_with_arduino` should be set to one of the followings `['true', '1', 't', 'y', 'yes']`
 
-`AcquisitionFrameRateEnable` should be `False` for HW trigger, and `True` for SW trigger in Basler options.
- 
+`AcquisitionFrameRateEnable` should be `False` for the HW trigger, and `True` for the SW trigger in Basler options.
+
 ### LED Stimulation
 
 Stimulation can only be used in the HW trigger mode.

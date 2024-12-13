@@ -51,7 +51,7 @@ cams:
     type: FLIR
     master: True
     use: False
-    preview: False
+    preview: True
     predict: True
     preview_predict: True
     pred_preview_toggle_button: 'f'
