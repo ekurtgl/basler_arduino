@@ -68,11 +68,11 @@ def main():
         help='Configuration for acquisition. Defines number of cameras, serial numbers, etc.')
     parser.add_argument('--model_path', default='', type=str, 
         help='Path to the prediction model')
-    parser.add_argument('--stimulation_path', default='', type=str, # config/stimulation_config.json
+    parser.add_argument('--stimulation_path', default='config/stimulation_config.json', type=str, # config/stimulation_config.json
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=600, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=840, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
     parser.add_argument('-t', '--trigger_with_arduino', default="1",
          type=str, help='Flag to use python software trigger (instead of arduino)')
@@ -176,17 +176,9 @@ def main():
     #     # if pwm_fps is None:
     #     #     raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
     #     # cmd = "S,{}\r\n".format(pwm_fps)
-    #     cmd = "S,{}\r".format(pwm_fps)
     #     arduino.arduino.write(cmd.encode())
     #     logger.info("***Sent msg to Arduino: {} ***".format(cmd))
     #     time.sleep(0.5)
-
-    if args.stimulation_path != '':
-        stimulator = Stimulator(args, arduino, cam, logger, os.path.join(directory, 'loaded_stimulation_config.json'))
-        logger.info('\nStimulation parameters:')
-        stimulator.print_params()
-        stimulator.send_stim_config()
-        time.sleep(0.1) # if stim doesn't work, sleep time may need to be adjusted based on computer's speed
 
     futures = []
 
@@ -199,11 +191,17 @@ def main():
         time.sleep(0.5)
         # if pwm_fps is None:
         #     raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
-        # cmd = "S,{}\r\n".format(pwm_fps)
-        cmd = "S,{}\r".format(pwm_fps)
+        cmd = "S,{}\r\n".format(pwm_fps)
         arduino.arduino.write(cmd.encode())
         logger.info("***Sent msg to Arduino: {} ***".format(cmd))
         time.sleep(0.5)
+
+    if args.stimulation_path != '':
+        stimulator = Stimulator(args, arduino, cam, logger, os.path.join(directory, 'loaded_stimulation_config.json'))
+        logger.info('\nStimulation parameters:')
+        stimulator.print_params()
+        stimulator.send_stim_config()
+        time.sleep(0.1) # if stim doesn't work, sleep time may need to be adjusted based on computer's speed
 
     if args.stimulation_path != '':
         stimulator.send_stim_trigger()

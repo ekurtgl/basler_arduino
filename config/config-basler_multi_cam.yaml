@@ -5,8 +5,8 @@ cams:
   basler_0:
     type: Basler
     master: False
-    use: False
-    preview: False
+    use: True
+    preview: True
     predict: False
     preview_predict: False
     pred_preview_toggle_button: 'b'
@@ -33,7 +33,7 @@ cams:
       CenterX: True
       CenterY: True
       PixelFormat: Mono8
-      AcquisitionFrameRateEnable: True # False if external HW trigger, True for SW trigger
+      AcquisitionFrameRateEnable: False # False if external HW trigger, True for SW trigger
       AcquisitionFrameRate: 120.0 # will be overwritten by the recording_fps
       GainAuto: 'Off'
       Gain: 0.0
@@ -51,7 +51,7 @@ cams:
     type: FLIR
     master: True
     use: True
-    preview: True
+    preview: False
     predict: True
     preview_predict: True
     pred_preview_toggle_button: 'f'
