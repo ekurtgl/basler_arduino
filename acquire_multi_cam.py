@@ -172,13 +172,14 @@ def main():
     #     #p = mp.Process(target=initialize_and_loop, args=(tup,))
     #     #p.start()
     
-    if trigger_with_arduino:
-        # if pwm_fps is None:
-        #     raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
-        cmd = "S,{}\r\n".format(pwm_fps)
-        arduino.arduino.write(cmd.encode())
-        logger.info("***Sent msg to Arduino: {} ***".format(cmd))
-        time.sleep(0.5)
+    # if trigger_with_arduino:
+    #     # if pwm_fps is None:
+    #     #     raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
+    #     # cmd = "S,{}\r\n".format(pwm_fps)
+    #     cmd = "S,{}\r".format(pwm_fps)
+    #     arduino.arduino.write(cmd.encode())
+    #     logger.info("***Sent msg to Arduino: {} ***".format(cmd))
+    #     time.sleep(0.5)
 
     if args.stimulation_path != '':
         stimulator = Stimulator(args, arduino, cam, logger, os.path.join(directory, 'loaded_stimulation_config.json'))
@@ -193,6 +194,16 @@ def main():
         if args.acquisition_mode == 'frames':
             future = initialize_and_loop(tup, logger, report_period=1)
             futures.append(future)
+
+    if trigger_with_arduino:
+        time.sleep(0.5)
+        # if pwm_fps is None:
+        #     raise ValueError('pwm_fps is not set. Set one master device in the .yaml file.')
+        # cmd = "S,{}\r\n".format(pwm_fps)
+        cmd = "S,{}\r".format(pwm_fps)
+        arduino.arduino.write(cmd.encode())
+        logger.info("***Sent msg to Arduino: {} ***".format(cmd))
+        time.sleep(0.5)
 
     if args.stimulation_path != '':
         stimulator.send_stim_trigger()

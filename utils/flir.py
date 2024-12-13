@@ -203,6 +203,7 @@ class FLIR():
         if str_to_bool(self.args.trigger_with_arduino):
             # pg.turn_strobe_on(self.nodemap, self.cam['strobe']['line'], strobe_duration=self.cam['strobe']['duration'])
             self.configure_camera_for_trigger()
+            # self.nodemap = self.camera.GetNodeMap()
             # self.configure_trigger()
             # self.set_hw_trigger()
             # self.camera.AcquisitionMode.SetIntValue(PySpin.AcquisitionMode_SingleFrame)
