@@ -1,4 +1,4 @@
-# Project Description
+# Multi-Camera Synchronous Data Acquisition with Basler and FLIR Cameras
 
 This program live streams the frames of Basler acA2040-120um and FLIR Grasshopper-3 USB-3 cameras with additional functionalities such as configuring the camera settings, exporting frames as a video, saving metadata of each frame, triggering camera from software (SW) or hardware (HW) by generating a PWM from Arduino's digital output pin, making inference from a pretrained ML model, preview of the camera stream and model predictions.
 
