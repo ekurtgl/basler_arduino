@@ -82,7 +82,7 @@ preview_predict: False # preview ML model inferences on the live frame
 pred_preview_toggle_button: 'b' # toggle button for prediction preview
 ```
 
-Currently, both cameras can be used but only one preview should be enabled. With two cameras (Basler + GS3-U3), we can acquire data at 60 FPS with (1280 x 1280) resolution or one camera with 120 FPS with the same resolution.
+Currently, both cameras can be used but only one preview should be enabled. 
 
 ### Recording Duration
 
@@ -102,7 +102,13 @@ Currently, both cameras can be used but only one preview should be enabled. With
 
 The cameras can be trigger via both SW or HW (Arduino). The relevant `--config` file should be provided for either case. For the HW trigger, `--trigger_with_arduino` should be set to one of the followings `['true', '1', 't', 'y', 'yes']`
 
-`AcquisitionFrameRateEnable` should be `False` for the HW trigger, and `True` for the SW trigger in Basler options.
+**For HW trigger:**
+With two cameras (Basler + GS3-U3), we can acquire data at 60 FPS with (1280 x 1280) resolution or one camera with 120 FPS with the same resolution.
+
+**For SW trigger:**
+We can acquire data at 120 FPS with (1280 x 1280) resolution regardless of one or two cameras.
+
+`AcquisitionFrameRateEnable` should be `False` for the HW trigger, and `True` for the SW trigger in Basler options, but this case is handled in [basler.py](utils/basler.py) in the `update_settings()` method.
 
 ### LED Stimulation
 

@@ -141,6 +141,9 @@ class Basler():
         else:
             for key, value in self.cam['options'].items():
                 #print(key, value)
+                if key == 'AcquisitionFrameRateEnable':
+                    value = False if str_to_bool(self.args.trigger_with_arduino) else True
+                
                 self.set_value(self.nodemap, key, value)
             # changing strobe involves multiple variables in the correct order, so I've bundled
             # them into this function

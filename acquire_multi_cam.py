@@ -28,7 +28,7 @@ grab_start_t = None
 def initialize_and_loop(tuple_list_item, logger, report_period=10): #config, camname, cam, args, experiment, start_t): #, arduino):
     global grab_start_t
     config, camname, cam, args, experiment, start_t, trigger_with_arduino, arduino = tuple_list_item
-
+    logger.info(f"\n{camname}: Initializing Loop...\n")
     if trigger_with_arduino and arduino is None:
         raise ValueError('Trigger with Arduino is but not initialized.')
     
@@ -72,7 +72,7 @@ def main():
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=600, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=1200, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
     parser.add_argument('-t', '--trigger_with_arduino', default="0",
          type=str, help='Flag to use python software trigger (instead of arduino)')
@@ -82,6 +82,8 @@ def main():
         help='Acquisition mode.')
     parser.add_argument('-w', '--videowrite_fps', default=30, type=float,
          help='Video save frame rate (default: acquisition rate)')
+    parser.add_argument('-N', '--nodemap_path', default=None,
+         action='store', help='Path to nodemap (.txt)')
     # parser.add_argument('-p', '--preview', default='1',
     #     help='Show preview in opencv window')
     # parser.add_argument('--predict', default='1',
@@ -104,8 +106,6 @@ def main():
     #      help='Experiment dur in minutes (default: inf.)')
     # parser.add_argument('-f', '--nframes_per_file', default=108000, type=int,
     #      help='N frames per file (default: 108000, or 15min at 120Hz)')
-    # parser.add_argument('-N', '--nodemap_path', default=None,
-    #      action='store', help='Path to nodemap (.txt)')
 
     args = parser.parse_args()
 
