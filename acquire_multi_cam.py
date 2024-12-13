@@ -68,13 +68,13 @@ def main():
         help='Configuration for acquisition. Defines number of cameras, serial numbers, etc.')
     parser.add_argument('--model_path', default='', type=str, 
         help='Path to the prediction model')
-    parser.add_argument('--stimulation_path', default='config/stimulation_config.json', type=str, # config/stimulation_config.json
+    parser.add_argument('--stimulation_path', default='', type=str, # config/stimulation_config.json
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
     parser.add_argument('--n_total_frames', default=840, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
-    parser.add_argument('-t', '--trigger_with_arduino', default="1",
+    parser.add_argument('-t', '--trigger_with_arduino', default="0",
          type=str, help='Flag to use python software trigger (instead of arduino)')
     parser.add_argument('--port', default='/dev/ttyACM0', type=str,
          help='port for arduino (default: /dev/ttyACM0)')
@@ -90,22 +90,22 @@ def main():
     #     help='Show detections overlayed on preview in opencv window')
     
     # unused flags
-    parser.add_argument('-v', '--verbose', default=False, action='store_true',
-        help='Use this flag to print debugging commands.')
-    parser.add_argument('--movie_format', default='opencv',
-        choices=['hdf5','opencv', 'ffmpeg', 'directory'], type=str,
-        help='Method to save files to movies. Dramatically affects performance and filesize')
-    parser.add_argument('--metadata_format', default='hdf5',
-        choices=['hdf5', 'txt', 'csv'], type=str,
-        help='Metadata format for timestamps (default: hdf5)')
-    parser.add_argument('-r', '--acquisition_fps', default=30, type=float,
-         help='Acquisition frame rate (default: 30 Hz)')
-    parser.add_argument('-d', '--experiment_duration', default=float('inf'), type=float,
-         help='Experiment dur in minutes (default: inf.)')
-    parser.add_argument('-f', '--nframes_per_file', default=108000, type=int,
-         help='N frames per file (default: 108000, or 15min at 120Hz)')
-    parser.add_argument('-N', '--nodemap_path', default=None,
-         action='store', help='Path to nodemap (.txt)')
+    # parser.add_argument('-v', '--verbose', default=False, action='store_true',
+    #     help='Use this flag to print debugging commands.')
+    # parser.add_argument('--movie_format', default='opencv',
+    #     choices=['hdf5','opencv', 'ffmpeg', 'directory'], type=str,
+    #     help='Method to save files to movies. Dramatically affects performance and filesize')
+    # parser.add_argument('--metadata_format', default='hdf5',
+    #     choices=['hdf5', 'txt', 'csv'], type=str,
+    #     help='Metadata format for timestamps (default: hdf5)')
+    # parser.add_argument('-r', '--acquisition_fps', default=30, type=float,
+    #      help='Acquisition frame rate (default: 30 Hz)')
+    # parser.add_argument('-d', '--experiment_duration', default=float('inf'), type=float,
+    #      help='Experiment dur in minutes (default: inf.)')
+    # parser.add_argument('-f', '--nframes_per_file', default=108000, type=int,
+    #      help='N frames per file (default: 108000, or 15min at 120Hz)')
+    # parser.add_argument('-N', '--nodemap_path', default=None,
+    #      action='store', help='Path to nodemap (.txt)')
 
     args = parser.parse_args()
 

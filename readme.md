@@ -1,23 +1,27 @@
 # Project Description
 
-This program live streams the frames of Basler acA2040-120um camera with additional options such as configuring the camera settings, exporting frames as a video, saving metadata of each frame, triggering camera from SW (pypylon) or HW (Arduino), making inference from a pretrained ML model, preview of the camera stream and model predictions.
+This program live streams the frames of Basler acA2040-120um and FLIR Grasshopper-3 USB-3 cameras with additional functionalities such as configuring the camera settings, exporting frames as a video, saving metadata of each frame, triggering camera from software (SW) or hardware (HW) by generating a PWM from Arduino's digital output pin, making inference from a pretrained ML model, preview of the camera stream and model predictions.
 
-The program utilizes threading capabilities of Python to run tasks concurrently without blocking each other.
+The program utilizes threading capabilities of Python to run tasks parallelly without blocking each other.
 
 # Installation 
 
 ### Software
 
-1. Download and install [Basler Pylon SDK](https://www2.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware).
-2. Download and install [FLIR Spinnaker SDK 4.0.0 (both GUI and Python SDK)](https://www.teledynevisionsolutions.com/support/support-center/software-firmware-downloads/iis/spinnaker-sdk-download/spinnaker-sdk--download-files/?pn=Spinnaker+SDK&vn=Spinnaker+SDK). Make sure the correct FFMPEG dependencies exist. I used [FFMPEG-4.4.5 "Rao"](https://www.ffmpeg.org/download.html#releases).
+1. **For Basler**: Download and install [Basler Pylon SDK](https://www2.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware).
+2. **For FLIR**: Download and install [FLIR Spinnaker SDK 4.0.0 (both GUI and Python SDK)](https://www.teledynevisionsolutions.com/support/support-center/software-firmware-downloads/iis/spinnaker-sdk-download/spinnaker-sdk--download-files/?pn=Spinnaker+SDK&vn=Spinnaker+SDK). Make sure the correct FFMPEG dependencies exist and SpinView can recognize the camera. I used [FFMPEG-4.4.5 "Rao"](https://www.ffmpeg.org/download.html#releases).
 
-2. **[Optional for hardware trigger with Arduino]** Upload `utils/arduino_pwm_led/arduino_pwm_led.ino` file to the Arduino.
+2. **[Optional for hardware trigger with Arduino]** Compile and upload [utils/arduino_pwm_led/arduino_pwm_led.ino](utils/arduino_pwm_led/arduino_pwm_led.ino) file to the Arduino.
 
 ### Hardware
 
 1. Connect Basler USB 3.0 and/or FLIR GS3-U3 to the computer.
 
-Optional Steps for the hardware trigger:
+**Optional Steps for hardware trigger via PWM from Arduino**:
+
+Replace the buzzer in the circuit with the camera of your choice (Basler or FLIR or both), and think of pink cable as your GPIO trigger line, and black is the GND.
+
+![Circuit Diagram](circuit/circuit.png)
 
 2. Connect:
     - Pin 3 of Arduino with Pin 1 (Brown cable) of the Basler, and Pin 4 (Green cable) of the FLIR GS3-U3.
@@ -47,7 +51,10 @@ Restart the computer for the access rights to take effect.
 
 You can create a new environment before installing the necessary dependencies.
 
-`conda create -n <your_env_name> python=3.10`
+```bash
+conda create -n <your_env_name> python=3.10
+conda activate <your_env_name>
+```
 
 Intall the dependencies via:
 
@@ -56,19 +63,36 @@ cd basler_arduino
 pip install -r requirements.txt
 ```
 
-OR 
+If some packages do not get installed, install them separately via:
 
-`conda env create -f environment.yml -n <your_env_name>`
-
-
-If some packages do not get installed, run this separately:
-`pip install pyyaml pyserial pypylon pynput tqdm opencv-python`
+`pip install <package_name>`
 
 # Configs
+**[config/config-basler_multi_cam.yaml](config/config-basler_multi_cam.yaml) is the only up-to-date config file.**
+
+### Selecting Camera and Previews
+
+Each camera in the configuration file has a unique name (i.e., basler_0) and the following attributes:
+
+```yaml
+use: True # using the camera or not
+preview: True # show preview of live stream
+predict: False # make real-time ML model inference
+preview_predict: False # preview ML model inferences on the live frame
+pred_preview_toggle_button: 'b' # toggle button for prediction preview
+```
+
+Currently, both cameras can be used but only one preview should be enabled. With two cameras (Basler + GS3-U3), we can acquire data at 60 FPS with (1280 x 1280) resolution or one camera with 120 FPS with the same resolution.
+
+### Recording Duration
+
+`--n_total_frames` argument in the main script ([acquire_multi_cam.py](acquire_multi_cam.py)) and `recording_fps` in [stimulation_config.json](config/stimulation_config.json) defines the recording duration.
 
 ### Data Save Path
 
-Change `savedir` under the [configuration file](config/config-basler_sw_trigger.yaml):
+`savedir` under the [configuration file](config/config-basler_multi_cam.yaml) file controls the data storing path.
+
+`-s` argument enables or disables data saving.
 
 ### Acquisition Mode
 
@@ -78,16 +102,15 @@ Change `savedir` under the [configuration file](config/config-basler_sw_trigger.
 
 The cameras can be trigger via both SW or HW (Arduino). The relevant `--config` file should be provided for either case. For the HW trigger, `--trigger_with_arduino` should be set to one of the followings `['true', '1', 't', 'y', 'yes']`
 
-`--n_total_frames` should be equal to the product of total duration of each blocks in [`stimulation_config.json`](config/stimulation_config.json) and the `AcquisitionFrameRate` parameter in the [camera config file](config/config-basler_hw_trigger.yaml).
+`AcquisitionFrameRateEnable` should be `False` for HW trigger, and `True` for SW trigger in Basler options.
+ 
+### LED Stimulation
 
+Stimulation can only be used in the HW trigger mode.
 
-### Stimulation
+If `--stimulation_path` is empty (i.e., `""`), no led stimulation will be triggered.
 
-Stimulation should always be used in the HW trigger mode.
-
-If `--stimulation_path` is `""`, no stimulation will be triggered.
-
-`stimulation_config.json` contains the stimulation profiles with the following structure:
+[stimulation_config.json](config/stimulation_config.json) contains the stimulation profiles with the following structure:
 
 ```json
 "<block number>": {"duration_sec": "8", // duration of the block in sec
@@ -98,13 +121,21 @@ If `--stimulation_path` is `""`, no stimulation will be triggered.
                     "pulse_offtime_ms": ["50", "250"]}, // list of pulse off times in ms
 ```
 
+`--n_total_frames` should be equal to the product of total duration of each blocks in [stimulation_config.json](config/stimulation_config.json) and the `AcquisitionFrameRate` parameter in the [camera config file](config/config-basler_multi_cam.yaml).
+
 # Running
 
-You can run the main program `acquire_frames_stimulation.py` with the default arguments given in [`.vscode/launch.json`](.vscode/launch.json)
+You can run the main program [acquire_multi_cam.py](acquire_multi_cam.py) via:
 
-### Preview
+```bash
+python acquire_multi_cam.py
+```
 
-You can toggle the prediction preview by pressing the `"P"` button on the keyboard during runtime.
+Or with appropriate attribute changes. To see the list of available options:
+
+```bash
+python acquire_multi_cam.py -h
+```
 
 # Hardware Troubleshoot
 
@@ -118,7 +149,10 @@ If the Arduino IDE stalls with the following notification:
 
 `Downloading index library_index.tar.bz2`
 
-End arduino processes in the system monitor or kill their pids, and delete `/home/<username>/.arduinoIDE/arduino-cli.yaml` file.
+First, make sure the serial monitor is closed.
+
+If it doesn't solve the problem, end arduino processes in the system monitor or kill their pids, and delete `/home/<username>/.arduinoIDE/arduino-cli.yaml` file.
+
 
 # Software Troubleshoot
 
@@ -157,4 +191,4 @@ sudo nano ~/.bashrc
 export SPINNAKER_GENTL64_CTI=/opt/spinnaker/lib/spinnaker-gentl/Spinnaker_GenTL.cti
 export LD_LIBRARY_PATH=/opt/spinnaker/lib:$LD_LIBRARY_PATH
 ```
-Then reboot. Make sure SpinView runs. 
+Then reboot. Make sure SpinView runs and recognizes the camera. 
