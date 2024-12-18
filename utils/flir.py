@@ -445,10 +445,11 @@ class FLIR():
                         self.predictor.get_random_prediction()
 
                     if self.preview:
+                        self.vid_show.n_frame = self.nframes
                         self.vid_show.frame = frame.copy()
+                        # self.vid_show.queue.put_nowait(frame.copy())
                         # self.vid_show.frame = np.expand_dims(frame.copy(), -1)
                         # print(f'fsum: {np.sum(self.vid_show.frame)}')
-                        self.vid_show.n_frame = self.nframes
                         if self.preview_predict:
                             self.vid_show.pred_result = self.predictor.pred_result
 

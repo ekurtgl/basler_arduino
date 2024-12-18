@@ -1,5 +1,5 @@
 savedir: data
-recording_fps: 120
+recording_fps: 60
 cams:
   ######### cfg for basler cam
   basler_0:
@@ -7,8 +7,8 @@ cams:
     master: False
     use: True
     preview: True
-    predict: True
-    preview_predict: True
+    predict: False
+    preview_predict: False
     pred_preview_toggle_button: 'b'
     serial: 24516213
     # set options to none to use default
@@ -53,7 +53,7 @@ cams:
     use: True
     preview: False
     predict: False
-    preview_predict: True
+    preview_predict: False
     pred_preview_toggle_button: 'f'
     serial: 23386795
     options:

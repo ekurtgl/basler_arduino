@@ -2,6 +2,7 @@ import os
 import cv2
 from pynput import keyboard
 from threading import Thread
+from queue import LifoQueue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -30,6 +31,8 @@ class VideoShow:
         self.pred_result = None
         self.stopped = False
         self.n_frame = 0
+
+        # prediction preview params
         self.circle_radius = 5
         self.thickness = -1  # fill the circle
         self.colors = [(255, 0, 0), (0, 255, 0), (33, 222, 255), (0, 0, 255)] # BGR
@@ -40,6 +43,8 @@ class VideoShow:
         self.fontcolor = (255, 0, 0) # blue
         self.fontthickness = 2
 
+        self.queue = LifoQueue(maxsize=50)
+        self.queue.put(frame)
         self.lock = threading.Lock()
         self.listener = keyboard.Listener(on_press=self.on_key_event)
         self.listener.start()
@@ -63,19 +68,21 @@ class VideoShow:
         cv2.namedWindow(self.name, cv2.WINDOW_NORMAL) 
         cv2.resizeWindow(self.name, self.prev_width, self.prev_height) 
         while not self.stopped:
+            # if self.queue.empty():
+            #     continue
+            # else:
+            #     print('here2')
+            #     self.frame = self.queue.get_nowait()
             if len(self.frame.shape) == 2:
                 self.frame = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR) 
             if self.show_pred:
                 for target_number, target in enumerate(self.pred_result):
                     for key_point in target:
                         self.frame = cv2.circle(self.frame, (key_point[1], key_point[0]), self.circle_radius, self.colors[target_number], self.thickness)
-                self.frame = cv2.putText(self.frame, f'Frame: {self.n_frame}', self.pos, self.font, 
-                                        self.fontScale, self.fontcolor, self.fontthickness, cv2.LINE_AA)
-                cv2.imshow(self.name, self.frame)
-            else:
-                self.frame = cv2.putText(self.frame, f'Frame: {self.n_frame}', self.pos, self.font, 
-                                        self.fontScale, self.fontcolor, self.fontthickness, cv2.LINE_AA)
-                cv2.imshow(self.name, self.frame)
+            
+            self.frame = cv2.putText(self.frame, f'Frame: {self.n_frame}', self.pos, self.font, 
+                                    self.fontScale, self.fontcolor, self.fontthickness, cv2.LINE_AA)
+            cv2.imshow(self.name, self.frame)
                 
             if cv2.waitKey(1) == ord("q"):
                 self.stopped = True

@@ -328,8 +328,9 @@ class Basler():
                         self.predictor.get_random_prediction()
 
                     if self.preview:
-                        self.vid_show.frame = frame
                         self.vid_show.n_frame = self.nframes
+                        self.vid_show.frame = frame
+                        # self.vid_show.queue.put_nowait(frame)
                         if self.preview_predict:
                             self.vid_show.pred_result = self.predictor.pred_result
 
