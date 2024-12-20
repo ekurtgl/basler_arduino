@@ -19,7 +19,7 @@ class VideoShow:
     """
 
     def __init__(self, name, show_pred=False, frame=None, preview_button='q', pred_preview_button='p',
-                 prev_width=500, prev_height=500):
+                 prev_width=500, prev_height=500, display_lock=None):
         self.frame = frame
         self.name = name
         self.show_pred = show_pred
@@ -27,7 +27,7 @@ class VideoShow:
         self.preview_button = preview_button
         self.prev_width = prev_width
         self.prev_height = prev_height
-        
+        self.display_lock = display_lock
         self.pred_result = None
         self.stopped = False
         self.n_frame = 0
@@ -46,11 +46,15 @@ class VideoShow:
         self.queue = LifoQueue(maxsize=50)
         self.queue.put(frame)
         self.lock = threading.Lock()
-        self.listener = keyboard.Listener(on_press=self.on_key_event)
-        self.listener.start()
+        # self.listener = keyboard.Listener(on_press=self.on_key_event)
+        # self.listener.start()
+        
+        self.preview_thread = Thread(target=self.preview_worker, daemon=True)
 
     def start(self):
         self.show()
+        # self.preview_thread.start()
+
     
     @threaded
     def on_key_event(self, event):
@@ -60,19 +64,18 @@ class VideoShow:
         if event.char == self.preview_button:  # Check if the pressed key is 'p'
             print("You closed the preview!")
             self.stopped = True
-            
-    @threaded
-    def show(self):
-        # with self.lock:
-            # os.sched_setaffinity(0, [1, 2, 3, 4])
+    
+    def preview_worker(self):
+
         cv2.namedWindow(self.name, cv2.WINDOW_NORMAL) 
         cv2.resizeWindow(self.name, self.prev_width, self.prev_height) 
         while not self.stopped:
-            # if self.queue.empty():
-            #     continue
-            # else:
-            #     print('here2')
-            #     self.frame = self.queue.get_nowait()
+            if self.queue.empty():
+                continue
+            self.frame = self.queue.get_nowait()
+            if self.frame is None:
+                continue
+            
             if len(self.frame.shape) == 2:
                 self.frame = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR) 
             if self.show_pred:
@@ -82,10 +85,63 @@ class VideoShow:
             
             self.frame = cv2.putText(self.frame, f'Frame: {self.n_frame}', self.pos, self.font, 
                                     self.fontScale, self.fontcolor, self.fontthickness, cv2.LINE_AA)
-            cv2.imshow(self.name, self.frame)
+            
+            if self.display_lock is not None:
+                with self.display_lock:
+                    cv2.imshow(self.name, self.frame)
+
+                    if cv2.waitKey(1) == ord("q"):
+                        self.stopped = True
+            else:
+                cv2.imshow(self.name, self.frame)
                 
-            if cv2.waitKey(1) == ord("q"):
-                self.stopped = True
+                if cv2.waitKey(1) == ord("q"):
+                    self.stopped = True
+            
+            # print(f'{self.name}: frame: {self.frame.shape}')
+        cv2.destroyWindow(self.name)
+
+    @threaded
+    def show(self):
+        # with self.lock:
+            # os.sched_setaffinity(0, [1, 2, 3, 4])
+        cv2.namedWindow(self.name, cv2.WINDOW_NORMAL) 
+        cv2.resizeWindow(self.name, self.prev_width, self.prev_height) 
+        while not self.stopped:
+            # print(f'q: {self.queue.qsize()}') 
+            # if self.queue.empty():
+            #     print('here3')
+            #     continue
+            # else:
+            #     print('here2')
+            #     self.frame = self.queue.get()
+            #     print(f'p_frame: {self.frame}')
+
+            self.frame = self.queue.get()
+            if self.frame is None:
+                continue
+
+            if len(self.frame.shape) == 2:
+                self.frame = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR) 
+            if self.show_pred:
+                for target_number, target in enumerate(self.pred_result):
+                    for key_point in target:
+                        self.frame = cv2.circle(self.frame, (key_point[1], key_point[0]), self.circle_radius, self.colors[target_number], self.thickness)
+            
+            self.frame = cv2.putText(self.frame, f'Frame: {self.n_frame}', self.pos, self.font, 
+                                    self.fontScale, self.fontcolor, self.fontthickness, cv2.LINE_AA)
+            
+            if self.display_lock is not None:
+                with self.display_lock:
+                    cv2.imshow(self.name, self.frame)
+
+                    if cv2.waitKey(1) == ord("q"):
+                        self.stopped = True
+            else:
+                cv2.imshow(self.name, self.frame)
+                
+                if cv2.waitKey(1) == ord("q"):
+                    self.stopped = True
                 
         cv2.destroyWindow(self.name)
 

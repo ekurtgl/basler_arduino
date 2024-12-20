@@ -25,8 +25,9 @@ def threaded(fn):
 
 class FLIR():
 
-    def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
-        print('Searching for camera...')
+    def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0,
+                 max_cams=2, connect_retries=20, display_lock=None) -> None:
+        logger.info(f'{camname}: Searching for camera...')
 
         self.start_t = start_t
         self.args = args
@@ -62,7 +63,8 @@ class FLIR():
             self.predictor = Predictor(self.logger, self.args.model_path)
         
         if self.preview:
-            self.vid_show = VideoShow(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'])
+            self.vid_show = VideoShow(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'],
+                                      display_lock=display_lock)
             self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
             if self.vid_show.show_pred:
                 self.vid_show.pred_result = self.predictor.pred_result
@@ -446,8 +448,10 @@ class FLIR():
 
                     if self.preview:
                         self.vid_show.n_frame = self.nframes
-                        self.vid_show.frame = frame.copy()
-                        # self.vid_show.queue.put_nowait(frame.copy())
+                        # self.vid_show.frame = frame.copy()
+                        if not self.vid_show.queue.full():
+                            # print(f'{self.camname} frame: {frame.shape}')
+                            self.vid_show.queue.put_nowait(frame.copy())
                         # self.vid_show.frame = np.expand_dims(frame.copy(), -1)
                         # print(f'fsum: {np.sum(self.vid_show.frame)}')
                         if self.preview_predict:

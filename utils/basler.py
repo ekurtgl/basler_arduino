@@ -24,7 +24,8 @@ def threaded(fn):
 
 class Basler():
 
-    def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0, max_cams=2, connect_retries=20) -> None:
+    def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0,
+                 max_cams=2, connect_retries=20, display_lock=None) -> None:
 
         self.start_t = start_t
         self.args = args
@@ -34,6 +35,7 @@ class Basler():
         self.config = config
         self.cam_id = cam_id
         self.frame_timer = None
+        self.display_lock = display_lock
         # self.preview = str_to_bool(self.args.preview)
         self.preview = cam['preview']
         self.save = str_to_bool(self.args.save)
@@ -103,7 +105,8 @@ class Basler():
             # self.predictor.start()
 
         if self.preview:
-            self.vid_show = VideoShow(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'])
+            self.vid_show = VideoShow(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'],
+                                      display_lock=self.display_lock)
             self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
             if self.vid_show.show_pred:
                 self.vid_show.pred_result = self.predictor.pred_result
@@ -329,8 +332,11 @@ class Basler():
 
                     if self.preview:
                         self.vid_show.n_frame = self.nframes
-                        self.vid_show.frame = frame
-                        # self.vid_show.queue.put_nowait(frame)
+                        # self.vid_show.frame = frame
+                        if not self.vid_show.queue.full():
+                            # print(f'{self.camname} frame: {frame.shape}')
+                            self.vid_show.queue.put_nowait(frame)
+
                         if self.preview_predict:
                             self.vid_show.pred_result = self.predictor.pred_result
 

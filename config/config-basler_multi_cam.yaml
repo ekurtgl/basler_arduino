@@ -1,6 +1,36 @@
 savedir: data
 recording_fps: 60
 cams:
+  ######### cfg for flir cam
+  flir_0:
+    type: FLIR
+    master: True
+    use: True
+    preview: True
+    predict: False
+    preview_predict: False
+    pred_preview_toggle_button: 'f'
+    serial: 23386795
+    options:
+      AcquisitionMode: 'Continuous' # [SingleFrame, Continuous, MultiFrame]
+      ExposureMode: 'Timed'
+      ExposureAuto: 'Off' # manually set exposure
+      ExposureTime: 1000.0 # in microseconds, so 1000 = 1ms
+      ExposureTimeAbs: 1000.0 # in microseconds, so 1000 = 1ms
+      BinningVertical: 1 
+      Height: 1280 # max 1024 if Binning=1, else 512
+      Width: 1280 # max 1280 if Binning=1, else 640
+      OffsetX: 0 # left value of ROI
+      OffsetY: 0 # right value of ROI
+      PixelFormat: 'Mono8'
+      AcquisitionFrameRateAuto: 'Off' # Continuous, Once, Off
+      AcquisitionFrameRate: 0 # will be overwritten by the recording_fps
+      GainAuto: 'Off'
+      Gain: 0.0
+    # strobe:
+    #   line: 0
+    #   duration: 0.0
+
   ######### cfg for basler cam
   basler_0:
     type: Basler
@@ -46,35 +76,6 @@ cams:
       line_output: 4
       line_source: 'ExposureActive'
   
-  ######### cfg for flir cam
-  flir_0:
-    type: FLIR
-    master: True
-    use: True
-    preview: False
-    predict: False
-    preview_predict: False
-    pred_preview_toggle_button: 'f'
-    serial: 23386795
-    options:
-      AcquisitionMode: 'Continuous' # [SingleFrame, Continuous, MultiFrame]
-      ExposureMode: 'Timed'
-      ExposureAuto: 'Off' # manually set exposure
-      ExposureTime: 1000.0 # in microseconds, so 1000 = 1ms
-      ExposureTimeAbs: 1000.0 # in microseconds, so 1000 = 1ms
-      BinningVertical: 1 
-      Height: 1280 # max 1024 if Binning=1, else 512
-      Width: 1280 # max 1280 if Binning=1, else 640
-      OffsetX: 0 # left value of ROI
-      OffsetY: 0 # right value of ROI
-      PixelFormat: 'Mono8'
-      AcquisitionFrameRateAuto: 'Off' # Continuous, Once, Off
-      AcquisitionFrameRate: 0 # will be overwritten by the recording_fps
-      GainAuto: 'Off'
-      Gain: 0.0
-    # strobe:
-    #   line: 0
-    #   duration: 0.0
 
 
 
