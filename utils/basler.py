@@ -106,15 +106,15 @@ class Basler():
             # self.predictor.start()
 
         if self.preview:
-            self.vid_show = VideoShow(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'],
-                                      display_lock=self.display_lock)
-            self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
-            # self.vid_show = VideoShow2(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'],
-            #                           display_manager=self.display_manager)
+            # self.vid_show = VideoShow(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'],
+            #                           display_lock=self.display_lock)
+            # self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
+            self.vid_show = VideoShow2(self.camname, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'],
+                                      display_manager=self.display_manager)
             # self.display_manager.add_display(self.camname)
             if self.vid_show.show_pred:
                 self.vid_show.pred_result = self.predictor.pred_result
-            self.vid_show.start()
+            # self.vid_show.start()
 
         if self.save:
             self.init_video_writer()
@@ -335,13 +335,15 @@ class Basler():
                         self.predictor.get_random_prediction()
 
                     if self.preview:
-                        self.vid_show.n_frame = self.nframes
+                        # self.vid_show.n_frame = self.nframes
                         # self.vid_show.frame = frame
-                        if not self.vid_show.queue.full():
-                            # print(f'{self.camname} frame: {frame.shape}')
-                            self.vid_show.queue.put_nowait(frame)
-                            # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame))
+                        # if not self.vid_show.queue.full():
+                        #     # print(f'{self.camname} frame: {frame.shape}')
+                        #     self.vid_show.queue.put_nowait(frame)
+                        #     # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame))
                         # self.vid_show.update(frame)
+                        if not self.display_manager.displays[self.camname]['queue'].full():
+                            self.display_manager.displays[self.camname]['queue'].put_nowait(frame)
                         # self.display_manager.update_frame(self.camname, frame)
 
                         if self.preview_predict:

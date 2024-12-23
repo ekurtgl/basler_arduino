@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 # cv2.setNumThreads(2)
 display_lock = threading.Lock()
 display_manager = DisplayManager() 
-# display_manager.start()
+display_manager.start()
 tp = ThreadPoolExecutor(10)  # max 10 threads
 
 def threaded(fn):
@@ -81,7 +81,7 @@ def main():
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=20, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=200, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
     parser.add_argument('-t', '--trigger_with_arduino', default="0",
          type=str, help='Flag to use python software trigger (instead of arduino)')

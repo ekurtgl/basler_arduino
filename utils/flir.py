@@ -64,15 +64,15 @@ class FLIR():
             self.predictor = Predictor(self.logger, self.args.model_path)
         
         if self.preview:
-            self.vid_show = VideoShow(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'],
-                                      display_lock=display_lock)
-            self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
-        #     self.vid_show = VideoShow2(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'],
-        #                                display_manager=display_manager)
+            # self.vid_show = VideoShow(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'],
+            #                           display_lock=display_lock)
+            # self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
+            self.vid_show = VideoShow2(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'],
+                                       display_manager=display_manager)
             # self.display_manager.add_display(self.camname)
         #     if self.vid_show.show_pred:
         #         self.vid_show.pred_result = self.predictor.pred_result
-            self.vid_show.start()
+            # self.vid_show.start()
 
         if self.save:
             self.init_video_writer()
@@ -451,16 +451,16 @@ class FLIR():
                         self.predictor.get_random_prediction()
 
                     if self.preview:
-                        self.vid_show.n_frame = self.nframes
+                        # self.vid_show.n_frame = self.nframes
                         # # self.vid_show.frame = frame.copy()
-                        if not self.vid_show.queue.full():
-                            # print(f'{self.camname} frame: {frame.shape}')
-                            self.vid_show.queue.put_nowait(frame.copy())
-                            # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame.copy()))
+                        # if not self.vid_show.queue.full():
+                        #     # print(f'{self.camname} frame: {frame.shape}')
+                        #     self.vid_show.queue.put_nowait(frame.copy())
+                        #     # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame.copy()))
 
                         # self.vid_show.update(frame.copy())
-                        # if not self.display_manager.displays[self.camname]['queue'].full():
-                        #     self.display_manager.displays[self.camname]['queue'].put_nowait(frame.copy())
+                        if not self.display_manager.displays[self.camname]['queue'].full():
+                            self.display_manager.displays[self.camname]['queue'].put_nowait(frame.copy())
                         # self.display_manager.update_frame(self.camname, frame.copy())
 
                         # self.vid_show.frame = np.expand_dims(frame.copy(), -1)

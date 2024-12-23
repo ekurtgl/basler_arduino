@@ -26,20 +26,32 @@ class DisplayManager:
         self.display_thread = None
         self.display_lock = threading.Lock()
         # cv2.setNumThreads(1)
+
+        # prediction preview params
+        self.circle_radius = 5
+        self.thickness = -1  # fill the circle
+        self.colors = [(255, 0, 0), (0, 255, 0), (33, 222, 255), (0, 0, 255)] # BGR
+        self.font = cv2.FONT_HERSHEY_SIMPLEX
+        self.pos = (50, 50)
+        self.fontScale = 1
+        # self.fontcolor = (255, 255, 255) # white
+        self.fontcolor = (255, 0, 0) # blue
+        self.fontthickness = 2
         
-    def add_display(self, name, width=500, height=500):
+    def add_display(self, name, width=500, height=500, pred_preview_button=None):
         """Add a new display for a camera stream"""
         if name not in self.displays:
             self.displays[name] = {
                 'queue': LifoQueue(maxsize=5),
                 'window_size': (width, height),
                 'frame_count': 0,
-                # 'last_time': time.time()
+                'last_time': time.perf_counter(),
+                'pred_preview_button': pred_preview_button
             }
             # cv2.startWindowThread()
             # cv2.namedWindow(name, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
-            cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(name, width, height)
+            # cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow(name, width, height)
     
     def update_frame(self, name, frame):
         """Update frame for a specific display"""
@@ -49,13 +61,13 @@ class DisplayManager:
             
         try:
             self.displays[name]['queue'].put_nowait(frame)
-            print('put new frame')
+            # print(f'{name}: put new frame')
         except Exception as e:
             # If queue is full, drop the oldest frame
             try:
                 self.displays[name]['queue'].get_nowait()
                 self.displays[name]['queue'].put_nowait(frame)
-                print('put new frame2')
+                # print(f'{name}: put new frame2')
             except Exception as nested_e:
                 print(f'Display Err2: {str(nested_e)}')
             
@@ -74,143 +86,65 @@ class DisplayManager:
         self.stopped = True
         if self.display_thread:
             self.display_thread.join(timeout=1.0)
-        for name in self.displays:
-            cv2.destroyWindow(name)
-            cv2.waitKey(1)
+        cv2.destroyAllWindows()
     
-    # @threaded
+    @threaded
     def display_loop(self):
         """Main display loop"""
         cnt = 0
-        # name = 'flir_0'
-        # while name not in self.displays.keys():
-        #     continue
 
         while not self.stopped:
-        #     print('entered')
-        #     self.frame = self.displays[name]['queue'].get()
-        #     if self.frame is None:
-        #         continue
-        #     print(f'frame: {self.frame.shape}')
-        #     if len(self.frame.shape) == 2:
-        #         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR) 
-           
-        #     if self.display_lock is not None:
-        #         print(f'here2')
-        #         with self.display_lock:
-        #             print(f'here3')
-        #             cv2.imshow(name, self.frame)
-        #             print(f'here4')
-
-        #             if cv2.waitKey(1) == ord("q"):
-        #                 self.stopped = True
-        #             print(f'here5')
-        #     else:
-        #         cv2.imshow(name, self.frame)
-                
-        #         if cv2.waitKey(1) == ord("q"):
-        #             self.stopped = True
-
-            ########## orig
-            displayed_any = False
             # print(f'cnt: {cnt}')
             cnt += 1
             # for name, display in self.displays.items():
-            for name in self.displays.keys():
+            for name, display in self.displays.items():
                 try:
-                    print(f'name: {name}, display: {self.displays[name]}')
-                    if self.displays[name]['queue'].empty():
-                        print(f'{name}: empty q')
+                    # print(f'name: {name}, display: {display}')
+
+                    if display['queue'].empty():
+                        # print(f'{name}: empty q')
                         continue
+
                     # Try to get a frame with a short timeout
-                    frame = self.displays[name]['queue'].get()
+                    frame = display['queue'].get()
                     
                     if frame is None:
-                        print('None frame')
+                        # print(f'{name}: None frame')
                         continue
-                    print(f'frame: {frame.shape}')
+
+                    if display['frame_count'] == 0:
+                        print(f'Creating display window for: {name}')
+                        cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+                        cv2.resizeWindow(name, 500, 500)
+
+                    # print(f'frame: {frame.shape}')
                     if len(frame.shape) == 2:
                         frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
                     
                     # Calculate and display FPS
-                    # current_time = time.time()
+                    current_time = time.perf_counter()
                     # fps = 1.0 / (current_time - self.displays[name]['last_time'])
-                    # self.displays[name]['last_time'] = current_time
-                    # cv2.putText(frame, 
-                    #           f'Frame: {display["frame_count"]} FPS: {fps:.1f}', 
-                    #           (10, 30), 
-                    #           cv2.FONT_HERSHEY_SIMPLEX, 
-                    #           1, 
-                    #           (0, 255, 0), 
-                    #           2)
-                    
+                    self.displays[name]['last_time'] = current_time                    
+                    frame = cv2.putText(frame, f'Frame: {display["frame_count"]}', self.pos, self.font, # , FPS: {fps:.1f}
+                                        self.fontScale, self.fontcolor, self.fontthickness, cv2.LINE_AA)
                     # Short lock only for imshow
                     with self.display_lock:
-                        print('here30')
-                        # cv2.imshow(name, frame)
-                        # print('here3')
                         try:
-                            print("Frame info:")
-                            print(f"- name: {name}")
-                            print(f"- Type: {type(frame)}")
-                            print(f"- Shape: {frame.shape}")
-                            print(f"- dtype: {frame.dtype}")
-                            print(f"- Is contiguous: {frame.flags['C_CONTIGUOUS']}")
-                            # print(f"- Any NaN: {np.isnan(frame).any()}")
-                            # print(f"- Min/Max: {np.min(frame)}/{np.max(frame)}")
                             cv2.imshow(name, frame)
-                            key = cv2.waitKey(1) & 0xFF
-                            # key = non_blocking_wait(1) & 0xFF
-                            print(f"Key: {key}")
-                            if key == ord('q'):
-                                print('stop key pressed.')
+                            if cv2.waitKey(1) == ord("q"):
                                 self.stopped = True
                                 break
-                            print('here62.')
-                            print(f"Displayed frame for {name}")
                         except Exception as e:
                             print(f"Error displaying frame for {name}: {e}")
                             continue
-                    print('here4')
+
                     self.displays[name]['frame_count'] += 1
-                    displayed_any = True
-                    print('here5')
                     
                 except Exception as e:
                     print(f"Display error in {name}: {str(e)}")
                     continue
-            
-            # Only do waitKey if we displayed at least one frame
-            # if displayed_any:
-            #     print('here6.')
-            #     try:
-            #         # key = cv2.waitKey(1) & 0xFF
-            #         # # key = non_blocking_wait(1) & 0xFF
-            #         # print(f"Key: {key}")
-            #         # if key == ord('q'):
-            #         #     print('stop key pressed.')
-            #         #     self.stopped = True
-            #         #     break
-            #         print('here62.')
-            #     except Exception as e:
-            #         print(f"Error in waitKey: {e}")
-                # print('here6.')
-                # if cv2.waitKey(1) == ord("q"):
-                #     print('stop key pressed.')
-                #     self.stopped = True
                     
-                # key = cv2.waitKey(1) & 0xFF
-                # if key == ord('q'):
-                #     print('stop key pressed.')
-                #     self.stopped = True
-                #     break
-                # print('here62.')
-            # else:
-            #     # Small sleep to prevent CPU spinning when no frames
-            #     time.sleep(0.001)
-            # print('here7.')
-        
-        cv2.destroyAllWindows()
+        self.stop()
 
 
 class VideoShow2:
@@ -222,13 +156,18 @@ class VideoShow2:
         self.stopped = False
         self.n_frame = 0
         self.pred_result = None
+        self.pred_preview_button = pred_preview_button
+        self.preview_button = preview_button
+
+        self.listener = keyboard.Listener(on_press=self.on_key_event)
+        self.listener.start()
         
         # Use provided display manager or create new one
         self.display_manager = display_manager
         if self.display_manager is None:
             self.display_manager = DisplayManager()
             
-        self.display_manager.add_display(name, prev_width, prev_height)
+        self.display_manager.add_display(name, prev_width, prev_height, pred_preview_button)
         
     def start(self):
         if self.display_manager.display_thread is None:
@@ -236,15 +175,28 @@ class VideoShow2:
         
     def update(self, frame):
         if not self.stopped:
-            # if self.pred_result is not None and self.show_pred:
-            #     # Add prediction visualization here if needed
-            #     pass
+            if self.pred_result is not None and self.show_pred:
+                for target_number, target in enumerate(self.pred_result):
+                    for key_point in target:
+                        frame = cv2.circle(frame, (key_point[1], key_point[0]), self.display_manager.circle_radius,
+                                            self.display_manager.colors[target_number], self.display_manager.thickness)
+
             self.display_manager.update_frame(self.name, frame)
-            print('updated frame')
             self.n_frame += 1
-            
+    
+    @threaded
+    def on_key_event(self, event):
+        if event.char == self.pred_preview_button:  # Check if the pressed key is 'p'
+            print("You toggled keypoint preview!")
+            self.show_pred = not self.show_pred
+        if event.char == self.preview_button:  # Check if the pressed key is 'p'
+            print("You closed the preview!")
+            self.stopped = True
+            self.display_manager.stop()
+
     def stop(self):
         self.stopped = True
+        self.display_manager.stop()
 
 
 class VideoShow:
@@ -281,9 +233,9 @@ class VideoShow:
         self.queue = Queue(maxsize=2)
         self.queue.put(frame)
         self.lock = threading.Lock()
-        # self.listener = keyboard.Listener(on_press=self.on_key_event)
-        # self.listener.start()
-        cv2.setNumThreads(1)
+        self.listener = keyboard.Listener(on_press=self.on_key_event)
+        self.listener.start()
+        # cv2.setNumThreads(1)
         self.preview_thread = Thread(target=self.preview_worker, daemon=True)
 
     def start(self):
