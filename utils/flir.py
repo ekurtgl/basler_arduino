@@ -7,7 +7,7 @@ import pprint
 import numpy as np
 import utils.pointgrey_utils as pg
 from datetime import datetime
-from .preview import VideoShow
+from .preview import VideoShow, VideoShow2
 from .prediction import Predictor
 from .helpers import str_to_bool
 from queue import Queue
@@ -26,7 +26,7 @@ def threaded(fn):
 class FLIR():
 
     def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0,
-                 max_cams=2, connect_retries=20, display_lock=None) -> None:
+                 max_cams=2, connect_retries=20, display_lock=None, display_manager=None) -> None:
         logger.info(f'{camname}: Searching for camera...')
 
         self.start_t = start_t
@@ -37,6 +37,7 @@ class FLIR():
         self.config = config
         self.cam_id = cam_id
         self.frame_timer = None
+        self.display_manager = display_manager
         # self.preview = str_to_bool(self.args.preview)
         self.preview = cam['preview']
         self.save = str_to_bool(self.args.save)
@@ -66,8 +67,11 @@ class FLIR():
             self.vid_show = VideoShow(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'],
                                       display_lock=display_lock)
             self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
-            if self.vid_show.show_pred:
-                self.vid_show.pred_result = self.predictor.pred_result
+        #     self.vid_show = VideoShow2(f'{self.camname}', self.preview_predict, pred_preview_button=cam['pred_preview_toggle_button'],
+        #                                display_manager=display_manager)
+            # self.display_manager.add_display(self.camname)
+        #     if self.vid_show.show_pred:
+        #         self.vid_show.pred_result = self.predictor.pred_result
             self.vid_show.start()
 
         if self.save:
@@ -448,10 +452,17 @@ class FLIR():
 
                     if self.preview:
                         self.vid_show.n_frame = self.nframes
-                        # self.vid_show.frame = frame.copy()
+                        # # self.vid_show.frame = frame.copy()
                         if not self.vid_show.queue.full():
                             # print(f'{self.camname} frame: {frame.shape}')
                             self.vid_show.queue.put_nowait(frame.copy())
+                            # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame.copy()))
+
+                        # self.vid_show.update(frame.copy())
+                        # if not self.display_manager.displays[self.camname]['queue'].full():
+                        #     self.display_manager.displays[self.camname]['queue'].put_nowait(frame.copy())
+                        # self.display_manager.update_frame(self.camname, frame.copy())
+
                         # self.vid_show.frame = np.expand_dims(frame.copy(), -1)
                         # print(f'fsum: {np.sum(self.vid_show.frame)}')
                         if self.preview_predict:

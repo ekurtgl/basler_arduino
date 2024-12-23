@@ -1,4 +1,5 @@
 import os
+import cv2
 import time
 import yaml
 import json
@@ -13,11 +14,14 @@ from utils.flir import FLIR
 from utils.arduino import Arduino
 from utils.helpers import str_to_bool
 from utils.stimulation import Stimulator
+from utils.preview import DisplayManager
 from concurrent.futures import ThreadPoolExecutor
 
 
+# cv2.setNumThreads(2)
 display_lock = threading.Lock()
-
+display_manager = DisplayManager() 
+# display_manager.start()
 tp = ThreadPoolExecutor(10)  # max 10 threads
 
 def threaded(fn):
@@ -42,9 +46,11 @@ def initialize_and_loop(tuple_list_item, logger, report_period=10): #config, cam
     if cam['type'] == 'Realsense':
         raise NotImplementedError
     elif cam['type'] == 'FLIR':
-        device = FLIR(args, cam, camname, experiment, config, start_t, logger, cam_id=0, display_lock=display_lock)
+        device = FLIR(args, cam, camname, experiment, config, start_t, logger, cam_id=0,
+                      display_lock=display_lock, display_manager=display_manager)
     elif cam['type'] == 'Basler':
-        device = Basler(args, cam, camname, experiment, config, start_t, logger, cam_id=0, display_lock=display_lock)
+        device = Basler(args, cam, camname, experiment, config, start_t, logger, cam_id=0,
+                        display_lock=display_lock, display_manager=display_manager)
     else:
         raise ValueError('Invalid camera type: %s' % cam['type'])
         
@@ -75,7 +81,7 @@ def main():
         help='Path to the stimulation config file (.json)')
     parser.add_argument('-s', '--save', default="1", type=str, # action='store_true',
         help='Use this flag to save to disk. If not passed, will only view')
-    parser.add_argument('--n_total_frames', default=200, type=int, # action='store_true',
+    parser.add_argument('--n_total_frames', default=20, type=int, # action='store_true',
         help='Total number of frames to be acquired if --acquisiton_mode == frames.')
     parser.add_argument('-t', '--trigger_with_arduino', default="0",
          type=str, help='Flag to use python software trigger (instead of arduino)')
@@ -190,6 +196,8 @@ def main():
             future = initialize_and_loop(tup, logger, report_period=1)
             futures.append(future)
 
+    # display_manager.display_loop()
+    
     if trigger_with_arduino:
         time.sleep(0.5)
         # if pwm_fps is None:

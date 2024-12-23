@@ -1,11 +1,11 @@
 savedir: data
-recording_fps: 60
+recording_fps: 10
 cams:
   ######### cfg for flir cam
   flir_0:
     type: FLIR
     master: True
-    use: True
+    use: False
     preview: True
     predict: False
     preview_predict: False

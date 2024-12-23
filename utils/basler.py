@@ -12,7 +12,7 @@ from pypylon import pylon
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
 from utils.helpers import str_to_bool
-from utils.preview import VideoShow
+from utils.preview import VideoShow, VideoShow2
 from utils.prediction import Predictor
 
 tp = ThreadPoolExecutor(100)  # max 10 threads
@@ -25,7 +25,7 @@ def threaded(fn):
 class Basler():
 
     def __init__(self, args, cam, camname, experiment, config, start_t, logger, cam_id=0,
-                 max_cams=2, connect_retries=20, display_lock=None) -> None:
+                 max_cams=2, connect_retries=20, display_lock=None, display_manager=None) -> None:
 
         self.start_t = start_t
         self.args = args
@@ -36,6 +36,7 @@ class Basler():
         self.cam_id = cam_id
         self.frame_timer = None
         self.display_lock = display_lock
+        self.display_manager = display_manager
         # self.preview = str_to_bool(self.args.preview)
         self.preview = cam['preview']
         self.save = str_to_bool(self.args.save)
@@ -108,6 +109,9 @@ class Basler():
             self.vid_show = VideoShow(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'],
                                       display_lock=self.display_lock)
             self.vid_show.frame = np.zeros((self.cam['options']['Height'], self.cam['options']['Width']), dtype=np.uint8)
+            # self.vid_show = VideoShow2(self.name, self.preview_predict, pred_preview_button=self.cam['pred_preview_toggle_button'],
+            #                           display_manager=self.display_manager)
+            # self.display_manager.add_display(self.camname)
             if self.vid_show.show_pred:
                 self.vid_show.pred_result = self.predictor.pred_result
             self.vid_show.start()
@@ -336,6 +340,9 @@ class Basler():
                         if not self.vid_show.queue.full():
                             # print(f'{self.camname} frame: {frame.shape}')
                             self.vid_show.queue.put_nowait(frame)
+                            # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame))
+                        # self.vid_show.update(frame)
+                        # self.display_manager.update_frame(self.camname, frame)
 
                         if self.preview_predict:
                             self.vid_show.pred_result = self.predictor.pred_result
