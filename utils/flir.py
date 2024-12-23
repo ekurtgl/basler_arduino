@@ -458,9 +458,9 @@ class FLIR():
                         #     self.vid_show.queue.put_nowait(frame.copy())
                         #     # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame.copy()))
 
-                        # self.vid_show.update(frame.copy())
-                        if not self.display_manager.displays[self.camname]['queue'].full():
-                            self.display_manager.displays[self.camname]['queue'].put_nowait(frame.copy())
+                        self.vid_show.update(frame.copy())
+                        # if not self.display_manager.displays[self.camname]['queue'].full():
+                        #     self.display_manager.displays[self.camname]['queue'].put_nowait(frame.copy())
                         # self.display_manager.update_frame(self.camname, frame.copy())
 
                         # self.vid_show.frame = np.expand_dims(frame.copy(), -1)

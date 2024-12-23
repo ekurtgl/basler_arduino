@@ -5,10 +5,10 @@ cams:
   flir_0:
     type: FLIR
     master: True
-    use: False
+    use: True
     preview: True
-    predict: False
-    preview_predict: False
+    predict: True
+    preview_predict: True
     pred_preview_toggle_button: 'f'
     serial: 23386795
     options:
@@ -37,8 +37,8 @@ cams:
     master: False
     use: True
     preview: True
-    predict: False
-    preview_predict: False
+    predict: True
+    preview_predict: True
     pred_preview_toggle_button: 'b'
     serial: 24516213
     # set options to none to use default

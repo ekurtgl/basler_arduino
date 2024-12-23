@@ -341,9 +341,9 @@ class Basler():
                         #     # print(f'{self.camname} frame: {frame.shape}')
                         #     self.vid_show.queue.put_nowait(frame)
                         #     # self.vid_show.queue.put_nowait(np.ascontiguousarray(frame))
-                        # self.vid_show.update(frame)
-                        if not self.display_manager.displays[self.camname]['queue'].full():
-                            self.display_manager.displays[self.camname]['queue'].put_nowait(frame)
+                        self.vid_show.update(frame)
+                        # if not self.display_manager.displays[self.camname]['queue'].full():
+                        #     self.display_manager.displays[self.camname]['queue'].put_nowait(frame)
                         # self.display_manager.update_frame(self.camname, frame)
 
                         if self.preview_predict:

@@ -73,13 +73,13 @@ class DisplayManager:
             
     def start(self):
         """Start the display thread"""
-        self.display_loop()
-        # if self.display_thread is None:
-        #     self.display_thread = threading.Thread(target=self.display_loop, daemon=True)
-        #     self.display_thread.start()
-        #     print('Display thread started.')
-        # else:
-        #     print('Display thread already running.')
+        # self.display_loop()
+        if self.display_thread is None:
+            self.display_thread = threading.Thread(target=self.display_loop, daemon=True)
+            self.display_thread.start()
+            print('Display thread started.')
+        else:
+            print('Display thread already running.')
         
     def stop(self):
         """Stop all displays"""
@@ -88,7 +88,7 @@ class DisplayManager:
             self.display_thread.join(timeout=1.0)
         cv2.destroyAllWindows()
     
-    @threaded
+    # @threaded
     def display_loop(self):
         """Main display loop"""
         cnt = 0
@@ -114,6 +114,7 @@ class DisplayManager:
 
                     if display['frame_count'] == 0:
                         print(f'Creating display window for: {name}')
+                        # cv2.startWindowThread()
                         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
                         cv2.resizeWindow(name, 500, 500)
 
