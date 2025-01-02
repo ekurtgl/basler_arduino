@@ -81,12 +81,16 @@ class DisplayManager:
         else:
             print('Display thread already running.')
         
-    def stop(self):
+    def stop(self, window_name=None):
         """Stop all displays"""
-        self.stopped = True
-        if self.display_thread:
-            self.display_thread.join(timeout=1.0)
-        cv2.destroyAllWindows()
+        if window_name is None:
+            self.stopped = True
+            cv2.destroyAllWindows()
+            if self.display_thread is not None:
+                self.display_thread.join(timeout=1.0)
+                self.display_thread = None
+        else:
+            cv2.destroyWindow(window_name)
     
     # @threaded
     def display_loop(self):
@@ -145,8 +149,6 @@ class DisplayManager:
                     print(f"Display error in {name}: {str(e)}")
                     continue
                     
-        self.stop()
-
 
 class VideoShow2:
     def __init__(self, name, show_pred=False, frame=None, preview_button='q', 
@@ -187,13 +189,13 @@ class VideoShow2:
     
     @threaded
     def on_key_event(self, event):
-        if event.char == self.pred_preview_button:  # Check if the pressed key is 'p'
+        if event.char == self.pred_preview_button:  # Check if the pressed key is pred_preview_button
             print("You toggled keypoint preview!")
             self.show_pred = not self.show_pred
-        if event.char == self.preview_button:  # Check if the pressed key is 'p'
+        if event.char == self.preview_button:  # Check if the pressed key is preview_button
             print("You closed the preview!")
             self.stopped = True
-            self.display_manager.stop()
+            self.display_manager.stop(self.name)
 
     def stop(self):
         self.stopped = True

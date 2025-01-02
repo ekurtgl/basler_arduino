@@ -1,5 +1,5 @@
 savedir: data
-recording_fps: 60
+recording_fps: 120
 cams:
   ######### cfg for flir cam
   flir_0:
