@@ -8,7 +8,6 @@ numpy==1.26.4
 opencv-python==4.10.0.84
 packaging==24.1
 pillow==11.0.0
-pip==24.2
 pynput==1.7.7
 pyparsing==3.2.0
 pypylon==4.0.0
