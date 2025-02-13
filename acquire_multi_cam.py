@@ -210,7 +210,7 @@ def main():
         time.sleep(0.5)
 
     if args.stimulation_path != '':
-        stimulator = Stimulator(args, arduino, cam, logger, os.path.join(directory, 'loaded_stimulation_config.json'))
+        stimulator = Stimulator(args, arduino, int(pwm_fps), logger, os.path.join(directory, 'loaded_stimulation_config.json'))
         logger.info('\nStimulation parameters:')
         stimulator.print_params()
         stimulator.send_stim_config()

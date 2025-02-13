@@ -14,10 +14,10 @@ def threaded(fn):
 
 class Stimulator():
 
-    def __init__(self, args, arduino, cam, logger, save_path=None) -> None:
+    def __init__(self, args, arduino, pwm_fps, logger, save_path=None) -> None:
         self.args = args
         self.arduino = arduino
-        self.cam = cam
+        self.pwm_fps = pwm_fps
         self.save_path = save_path
         self.monitor = False
         self.stimulation_status = False
@@ -25,7 +25,7 @@ class Stimulator():
 
         self.decode_stimulation()
 
-        if sum(self.block_durations) * self.cam['options']['AcquisitionFrameRate'] != int(args.n_total_frames):
+        if sum(self.block_durations) * pwm_fps != int(args.n_total_frames):
                 raise ValueError('Inconsistent number of frames between the args and stimulation.')
 
     def decode_stimulation(self):
