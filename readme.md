@@ -21,6 +21,7 @@ This software live streams the frames of Basler acA2040-120um and FLIR Grasshopp
 
 The software utilizes concurrency capabilities (i.e., threading) of Python to run tasks parallelly without blocking each other.
 
+
 # Installation
 
 ## Software
