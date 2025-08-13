@@ -12,9 +12,9 @@
 - <span style="color: green;">✔️</span> **Configurable acquisition** – Flexible YAML/JSON configs for camera usage, preview options, and frame rates.
 
 <p align="center">
-  <img src="assets/basler.png" alt="Basler" height="300"/>
-  <img src="assets/grasshopper3-usb3-b.jpg" alt="Grasshopper" height="300"/>
-  <img src="assets/arduino uno.png" alt="Arduino Uno" height="300"/>
+  <img src="assets/basler.png" alt="Basler" height="200"/>
+  <img src="assets/grasshopper3-usb3-b.jpg" alt="Grasshopper" height="200"/>
+  <img src="assets/arduino uno.png" alt="Arduino Uno" height="200"/>
 </p>
 
 This software live streams the frames of Basler acA2040-120um and FLIR Grasshopper-3 USB-3 cameras with additional functionalities such as configuring the camera settings, exporting frames as a video, saving metadata of each frame, triggering camera from software (SW) or hardware (HW) by generating a PWM from Arduino's digital output pin, making inference from a pretrained ML model, preview of the camera stream and model predictions.
